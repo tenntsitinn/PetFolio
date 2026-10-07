@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="680" viewBox="0 0 500 340">
+  <title>PetFolio — wide bookmark symbol</title>
+  <desc>Lower cover extends behind the yellow bookmark to the upper cover left edge. Its straight edges follow the upper opening edge slope 60/152. Lower lip is approximately 7 units thick with a rounded tip.</desc>
+  <path id="white-pages" fill="#FFFFFF" d="M48,84 L200,144 C224,156 234,204 218,228 C213,236 208,240.5 202.786,242.715 Q192,246.31 181.214,242.933 L51.285,191.645 Q57,189 56,179 L56,103 Q55,91 48,84 Z"/>
+  <g id="book" fill="#075780">
+    <path id="cover-with-continuous-rounded-bottom" d="M 48,76 L 251,18.5 Q 260,16 269,19.5 L 440,84.5
+ C 468,96 475,143 456,179 C 449,188 440,192 432,194
+ L 205,250.75 Q 192,254 179,249.584 L 48.715,198.155
+ A 3.5,3.5 0 0 1 51.285,191.645 L 181.214,242.933
+ Q 192,246.31 202.786,242.715 C 208,240.5 213,236 218,228
+ C 234,204 224,156 200,144 L 48,84 Q 41,80 48,76 Z"/>
+  </g>
+<path id="yellow-bookmark" fill="#F4BE26" d="M62,110 L132,137.63157894736841 L132,284.83157894736843 L97,256.01578947368421 L62,257.20000000000005 Z"/>
+  <g id="paw" fill="#fff" transform="matrix(.63 .38 -.77 .27 235 77)">
+    <ellipse cx="-36" cy="-15" rx="10" ry="15" transform="rotate(-27 -36 -15)"/>
+    <ellipse cx="-14" cy="-34" rx="11" ry="16" transform="rotate(-8 -14 -34)"/>
+    <ellipse cx="14" cy="-34" rx="11" ry="16" transform="rotate(8 14 -34)"/>
+    <ellipse cx="36" cy="-15" rx="10" ry="15" transform="rotate(27 36 -15)"/>
+    <path d="M 0,-8 C 9,-8 14,0 22,9 C 29,17 33,29 23,33 C 15,37 8,30 0,30 C -8,30 -15,37 -23,33 C -33,29 -29,17 -22,9 C -14,0 -9,-8 0,-8 Z"/>
+  </g>
+</svg>

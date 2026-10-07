@@ -1,0 +1,25 @@
+# Local executables and temporary test builds
+*.exe
+.test-build/
+__pycache__/
+*.pyc
+
+# Personal runtime data and machine-specific sprite metadata
+appearance.json
+pet-palettes.json
+pet-palettes.json.tmp
+probe-events.jsonl
+quota-snapshot.json
+
+# Generated diagnostic captures and client excerpts
+*.png
+!design/*.png
+native-*.js
+
+# Release builds and local design experiments
+dist/
+.release-source/
+design/*
+!design/petfolio-symbol-v12.svg
+!design/quota-bubble-outline-preview.svg
+!design/quota-bubble-outline-preview.png
