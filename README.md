@@ -1,5 +1,7 @@
 # PetFolio
 
+[繁體中文](#petfolio) · [English](#english)
+
 **圍繞 Codex Pet，增加實用功能與互動的 Windows 桌面伴侶工具。**
 
 PetFolio 讓桌面寵物成為工作時有用的小夥伴。第一個功能 **Quota Bubble** 會在你已有的 Codex Pet 旁顯示剩餘額度，跟隨寵物移動，並提供即時刷新與外觀調整。
@@ -37,7 +39,7 @@ PetFolio 讓桌面寵物成為工作時有用的小夥伴。第一個功能 **Qu
 
 1. 前往 [最新版本下載](https://github.com/tenntsitinn/PetFolio/releases/latest)，下載 Assets 中的 `PetFolio-版本號-win-x64.zip`。
 2. 解壓到可寫入的資料夾，開啟 Codex 並顯示 Pet。
-3. 雙擊解壓後的 `PetFolio.exe`。可為它建立桌面快捷方式，图標已內嵌。
+3. 雙擊解壓後的 `PetFolio.exe`。可為它建立桌面快捷方式，圖標已內嵌。
 
 不需編譯、Python 或執行啟動腳本。GitHub 自動提供的 **Source code** 壓縮檔只包含原始碼，請下載上面的 Windows 包。請先解壓，勿在 ZIP 裡直接執行。系統匣選擇 **Exit** 即可退出。
 
@@ -160,7 +162,7 @@ python .\build-pet-palettes.py --asar 'C:\path\to\resources\app.asar' --home 'C:
 .\test.ps1
 ```
 
-腳本在 `.test-build` 建置並執行配色、寵物切換、拖動跟隨、相對位置、額度模型／服務／stdio 協定、功能生命週期及單擊刷新測試，結束後清理本次產生的測試執行檔。
+腳本在 `.test-build` 建置並執行啟動偵測、配色、寵物切換、拖動跟隨、相對位置、額度模型／服務／stdio 協定、功能生命週期及單擊刷新測試，結束後清理本次產生的測試執行檔。
 
 協定測試使用本機假 CLI，不連接真實帳號或網路。部分測試建立獨立驗證視窗，不操作 Codex 客戶端；診斷紀錄可能留在測試目錄。有本機配色快取時，測試也會核對源圖有效性。
 
@@ -197,7 +199,7 @@ python .\build-pet-palettes.py --asar 'C:\path\to\resources\app.asar' --home 'C:
 
 ### 維護版本與下載包
 
-版本以 `VERSION` 為準，需同步 `Program.cs` 的兩個組件版本。提交描述以三段版本號開頭，初始為 `1.0.0`；未明確指定新 version 時保持首位，較多變更升第二位，較少變更升第三位。
+版本以 `VERSION` 為準，需同步 `Program.cs` 的兩個組件版本及 `app.manifest` 的識別版本。提交描述以三段版本號開頭，初始為 `1.0.0`；未明確指定新 version 時保持首位，較多變更升第二位，較少變更升第三位。
 
 執行 `./package.ps1` 可在 `dist` 建立免安裝 ZIP 與 SHA256；包內只包含 EXE、ICO、README 和 VERSION，不帶本機設定、額度資料或配色快取。推送與 VERSION 相同的版本標籤後，GitHub Actions 會先測試，再建置並發布 Release。首次發布說明位於 `RELEASE_NOTES.md`，後續發布應同步更新。
 
@@ -205,8 +207,8 @@ python .\build-pet-palettes.py --asar 'C:\path\to\resources\app.asar' --home 'C:
 
 | 情況 | 檢查方式 |
 | --- | --- |
-| 顯示 `Codex CLI was not found` | 用 `-CodexExecutable` 指定真正的 CLI `codex.exe` |
-| 顯示 `Codex desktop data was not found` | 先在 Codex 開啟 Pet，確認 `-DataDirectory` 包含 `.codex-global-state.json` |
+| 提示找不到 Codex CLI | 用 EXE 的兩個路徑參數，或腳本的 `-CodexExecutable` 與 `-DataDirectory` 指定環境 |
+| 提示找不到 Codex 桌面資料 | 先在 Codex 開啟 Pet，確認資料目錄包含 `.codex-global-state.json` |
 | 系統匣有圖示但沒有氣泡 | 確認寵物可見、功能已啟用，並選擇 `Show Quota Bubble`；仍無法顯示時檢查客戶端版本與視窗識別 |
 | 額度讀取失敗或與桌面端不同 | 確認 CLI 登入帳號、啟動環境與網路狀態，再點擊氣泡重試 |
 | 找不到編譯器或參考組件 | 對照 `build.ps1` 中的 Framework、GAC 與 WinMetadata 路徑；目前建置腳本尚未自動適配其他安裝位置 |
@@ -222,3 +224,229 @@ python .\build-pet-palettes.py --asar 'C:\path\to\resources\app.asar' --home 'C:
 - [Windows Forms 與 Visual Layer](https://learn.microsoft.com/en-us/windows/uwp/composition/using-the-visual-layer-with-windows-forms)：Windows Composition 整合參考。
 - [Direct2D 高斯模糊](https://learn.microsoft.com/en-us/windows/win32/direct2d/gaussian-blur)：背景模糊參考。
 - [Adaptive Tab Bar Colour](https://github.com/atbc-org/Adaptive-Tab-Bar-Colour/blob/main/src/utils/colour.ts)：`PetTheme.cs` 註明其源色與對比修正分離思路受此啟發，取色程式為獨立實作。
+
+---
+
+## English
+
+**A Windows desktop companion that adds useful features and interactions around Codex Pet.**
+
+PetFolio makes your desktop pet a useful companion while you work. Its first feature, **Quota Bubble**, shows your remaining Codex quota beside your existing pet, follows its movement, and provides refresh and appearance controls.
+
+Extensibility is a core requirement. The application host, shared pet state, and individual features have separate responsibilities so future features can reuse pet tracking and lifecycle management.
+
+PetFolio is an independent Windows application under development, rather than an installable Codex plugin. PetFolio is the project name; Quota Bubble is its quota feature.
+
+### Current feature: Quota Bubble
+
+- **Remaining quota:** Uses the Codex CLI `account/rateLimits/read` response to display remaining percentages for the returned usage windows. Purchased credits are kept separate from subscription quota.
+- **Automatic and manual refresh:** Queries immediately when enabled and every five minutes afterward. Click the bubble to refresh. Existing values remain visible during updates and after failures, with a failure indicator when appropriate.
+- **Following and placement:** Follows pet dragging. Drag the bubble to prefer the pet's upper left, upper right, lower left, or lower right. Placement adjusts near screen edges and returns to your preferred side when space becomes available.
+- **Colors and glass background:** Prefers a valid palette cache derived from pet source images; otherwise attempts to sample the pet window. Supports rounded corners, shadows, and background opacity from 10% to 100%. Falls back to a translucent background if glass initialization fails.
+- **Less interference:** Does not take focus from your editor. Transparent corners, background, and shadow regions allow mouse input to pass through. The bubble hides when the pet is hidden or closed.
+- **Independent feature controls:** Temporarily hide the bubble or disable the quota feature entirely. Background opacity and preferred placement are saved locally.
+
+Quota comes from the **CLI login account**. PetFolio currently does not verify that this account matches the Codex desktop account; check this yourself when using multiple accounts.
+
+### Getting started
+
+#### Requirements
+
+- Windows x64. The application depends on Windows Forms, Win32, and Windows Composition; macOS and Linux are not supported.
+- Codex desktop installed, with a visible Pet enabled.
+- A logged-in Codex CLI (`codex.exe`) that can return quota information. Quota queries require a working network connection.
+- .NET Framework 4.8, normally included with Windows 10/11. Building from source additionally requires PowerShell and the compiler, assemblies, and Windows WinMetadata referenced by `build.ps1`.
+- A writable application directory for local settings, snapshots, and diagnostic logs.
+
+The source build uses C# compiler scripts, with no `.csproj` or NuGet restore step. Normal builds and application use do not require Python. Compatibility across Windows versions and installation layouts still needs wider validation.
+
+#### Download and run (recommended)
+
+1. Open the [latest release](https://github.com/tenntsitinn/PetFolio/releases/latest) and download `PetFolio-VERSION-win-x64.zip` from **Assets**.
+2. Extract it into a writable folder. Open Codex and show your Pet.
+3. Double-click the extracted `PetFolio.exe`. You can create a desktop shortcut; the icon is embedded.
+
+No compilation, Python, or launcher script is required. GitHub's automatic **Source code** archives contain source files; download the Windows package instead. Extract the ZIP before running the application. Choose **Exit** in the system tray to stop it.
+
+If Codex cannot be found, the application displays a startup message. For custom installations, pass both paths from a terminal:
+
+```powershell
+.\PetFolio.exe 'C:\path\to\codex.exe' 'C:\path\to\.codex'
+```
+
+Compare the accompanying `.sha256` file with `Get-FileHash .\PetFolio-VERSION-win-x64.zip -Algorithm SHA256` to check download integrity. The executable currently has no digital signature.
+
+#### Run from source
+
+Open PowerShell in the project root:
+
+```powershell
+.\build.ps1
+.\run.ps1
+```
+
+The build produces `PetFolio.exe`, embedding `assets/PetFolio.ico` for the executable and system tray. A **PetFolio** tray icon appears when the application starts. The quota bubble appears when a visible pet is successfully identified.
+
+You can also double-click **Open PetFolio.vbs**. It hides the command window and builds the application if the executable is missing; this requires VBScript to be enabled. Launching again restores the quota feature and bubble in the existing instance. Rebuild with `build.ps1` after changing source files; the launcher does not rebuild an existing executable automatically.
+
+#### Specify the CLI and desktop data directory
+
+The executable first checks running `codex` processes whose executable paths are inside `OpenAI\Codex\bin`, then searches `%LOCALAPPDATA%\OpenAI\Codex\bin`, and finally checks `PATH`. `run.ps1` uses the same discovery code.
+
+To override discovery, replace these placeholder paths with your own:
+
+```powershell
+.\run.ps1 -CodexExecutable 'C:\path\to\codex.exe' -DataDirectory 'C:\path\to\.codex'
+```
+
+Provide both script parameters together. `-DataDirectory` points to the **desktop data directory** containing `.codex-global-state.json` and `config.toml`. Automatic discovery checks `CODEX_HOME` before `%USERPROFILE%\.codex`, using the presence of `.codex-global-state.json` to identify desktop data.
+
+**The data-directory argument only controls where pet state is read. It does not set the CLI subprocess's `CODEX_HOME` or switch its login account.** The subprocess inherits the launch environment.
+
+#### Stop
+
+Choose **Exit** in the system tray, or run:
+
+```powershell
+.\PetFolio.exe --stop
+```
+
+PetFolio does not add itself to Windows startup.
+
+### Using the application
+
+| Action | Result |
+| --- | --- |
+| Click inside the bubble | Refresh quota immediately; repeated clicks during a query do not add requests |
+| Drag the bubble | Choose its position relative to the pet; it snaps into place with a spring animation |
+| Press Esc while dragging | Cancel the drag |
+| Tray: `Refresh quota` | Refresh manually |
+| Tray: `Opacity` | Adjust background opacity in 10% increments |
+| Hover and click the upper-left × | Hide the bubble while background refresh continues |
+| Tray: `Show Quota Bubble` | Restore the hidden bubble |
+| Tray: `Features → Quota Bubble` | Disable or enable the feature; disabling releases windows, stops refresh, and cancels the active query |
+| Tray: `Exit` | Close the application |
+
+Mouse movement of at least 4 px counts as dragging. Dragging back to the starting point does not trigger a refresh. Canceling, losing mouse capture, releasing outside the rounded body, or clicking × also does not refresh.
+
+During a query, the bubble displays `Updating...`. Successful queries show the update time. A failed query with previous data displays `Failed · last HH:mm`; an initial failure shows a retry prompt. Previously displayed values are not guaranteed to reflect current quota.
+
+Hidden and disabled states apply only to the current session. The quota feature is enabled and the bubble shown by default after restarting. Background opacity and preferred placement are retained.
+
+### Local data and settings
+
+PetFolio reads Codex pet settings and window state without modifying desktop settings or pet assets. Quota queries use a CLI app-server subprocess and do not launch model tasks. Drag tracking uses a mouse observation hook without intercepting or synthesizing user input.
+
+These files are stored beside the executable and excluded by [.gitignore](.gitignore):
+
+| File | Contents |
+| --- | --- |
+| `appearance.json` | Background opacity and preferred placement |
+| `pet-palettes.json` | Pet colors, IDs, source-image paths, and validity metadata |
+| `quota-snapshot.json` | Latest successful quota snapshot |
+| `probe-events.jsonl` | Diagnostic events for quota, pet changes, positioning, and errors |
+
+Avoid sharing raw caches and logs containing personal paths, pet identifiers, or account usage data. Diagnostic logs currently append indefinitely; automatic rotation is not implemented.
+
+#### Optional: generate a pet palette cache
+
+The application runs without a cache. Generating one prioritizes source-image colors rather than window sampling. This optional step requires Python, Pillow, and NumPy; normal application use does not.
+
+Replace the installation and data paths below with your own:
+
+```powershell
+python -m pip install Pillow numpy
+python .\build-pet-palettes.py --asar 'C:\path\to\resources\app.asar' --home 'C:\path\to\.codex'
+```
+
+The script reads built-in and custom sprite images and locally stored cloud migration mappings to create `pet-palettes.json`. The cache contains source paths, sizes, and modification times, rather than images. Regenerate it after client updates, source-image changes, or adding pets. It is reread when palette resolution is needed; entries with mismatched source metadata are not used.
+
+### Development and extensibility
+
+The project currently uses **explicit feature registration within a single process**:
+
+| Layer | Main files | Responsibility |
+| --- | --- | --- |
+| Application host | `Program.cs`, `CompanionApplication.cs` | Single instance, message loop, tray, and feature registration |
+| Startup discovery | `StartupConfiguration.cs` | Shared CLI and desktop-data discovery for EXE and script launches |
+| Feature lifecycle | `ICompanionFeature.cs`, `QuotaFeature.cs` | Enable, disable, restore, and release resources |
+| Shared pet state | `PetStateService.cs` | Window identification, position, visibility, and color state |
+| Quota data | `QuotaData.cs`, `QuotaService.cs`, `CodexQuotaSource.cs` | Typed snapshots, refresh state, CLI protocol, and subprocesses |
+| Quota window | `QuotaLabel.cs`, `CloseBubbleButton.cs` | Content, clicks, dragging, and close controls |
+| Following and colors | `PetDragFollower.cs`, `PetPanelPlacement.cs`, `PetTheme.cs`, `PetColourSwitch.cs` | Positioning, snapping, sampling, and rejecting stale results |
+| Platform effects | `Native.cs`, `GlassBackdrop.cs`, `BackdropGaussian.cs`, `ShadowBackdrop.cs` | Windows interop, glass, and shadows |
+
+Implement `ICompanionFeature` for new features and register them in the host. Use the shared `IPetStateSource` for pet state instead of duplicating polling or mouse hooks. Features must support repeated start/stop cycles and clean up subscriptions, timers, and asynchronous work when stopped.
+
+See [ARCHITECTURE.md](ARCHITECTURE.md) for data flow, resource ownership, and module conventions. Dynamic third-party plugin loading, a plugin SDK, and coordination between multiple panels are not implemented. Future features will extend the existing boundaries as needed.
+
+#### Tests
+
+Run from the project root:
+
+```powershell
+.\test.ps1
+```
+
+The script builds and runs startup discovery, colors, pet switching, drag following, placement, quota model/service/stdio protocol, feature lifecycle, and click-refresh tests in `.test-build`, then removes the generated test executables.
+
+Protocol tests use a local fake CLI without real accounts or network access. Some tests create independent verification windows; they do not operate the Codex client. Diagnostic logs may remain in the test directory. If a local palette cache is present, tests also verify its source-image metadata.
+
+To avoid overwriting a running executable, use a separate build directory:
+
+```powershell
+.\build.ps1 -OutputDirectory .test-build
+```
+
+For manual glass, hit-testing, and hide/restore verification:
+
+```powershell
+.\build-glass-verification.ps1 -OutputDirectory .test-build
+.\.test-build\GlassVerification.exe
+```
+
+This tool briefly displays a test backdrop and writes screenshots to its output directory. It does not query real quota or change Codex settings. Automated tests do not replace checks of actual dragging, settings persistence after restart, mixed-DPI monitors, or compatibility after client updates.
+
+#### Design and diagnostics
+
+The quota panel is currently 190 × 96 px with 32 px rounded corners and a 12 px gap beside the pet. Upper and lower areas are reserved for the native Status Bubble and Action Bar. The follow timer uses a 16 ms interval; this is not a frame-rate guarantee.
+
+[design/](design/) contains selected assets. The [outline preview](design/quota-bubble-outline-preview.png) and its [SVG source](design/quota-bubble-outline-preview.svg) are design studies rather than screenshots of the current application; some text and layout are outdated. The application and tray use the embedded book, paw, and yellow-bookmark icon from the [PetFolio SVG](design/petfolio-symbol-v12.svg).
+
+`Inspect.cs` and `inspect-windows.py` are read-only window diagnostic tools. They are unnecessary for normal use.
+
+### Known limitations
+
+- **Client internals:** Pet discovery, selection, and saved position rely on internal configuration keys, process details, and window characteristics that may change with Codex updates. Binding occurs only when a unique matching window is found.
+- **Account matching:** The displayed quota belongs to the CLI account and may differ from the desktop account. It is not a real-time stream of individual usage events.
+- **Windows compatibility:** Glass uses an internal host-backdrop interface. More Windows versions and mixed-DPI multi-monitor setups need testing.
+- **Positioning:** PetFolio does not subscribe to native Status Bubble position events. Special snapping animations or layout changes may require adaptation.
+- **Portable ZIP only:** There is no installer, automatic updater, or automatic startup integration. Exit the old version before extracting an update; retain your local `appearance.json` if desired.
+
+#### Maintaining versions and releases
+
+`VERSION` is the version source. Keep both assembly versions in `Program.cs` and the identity version in `app.manifest` synchronized. Commit descriptions begin with a three-part version, starting at `1.0.0`. Unless a new major version is explicitly requested, retain the first component; increment the second for larger changes or the third for smaller ones.
+
+Run `./package.ps1` to create the portable ZIP and SHA256 file in `dist`. The archive contains only the EXE, ICO, README, and VERSION, without local settings, quota data, or palette caches. Pushing a version tag matching `VERSION` runs GitHub Actions tests, builds the package, and publishes a Release. Update `RELEASE_NOTES.md` for subsequent releases.
+
+### Troubleshooting
+
+| Problem | Check |
+| --- | --- |
+| Startup reports that the CLI cannot be found | Pass both paths to the EXE, or use `-CodexExecutable` and `-DataDirectory` with the script |
+| Startup reports missing desktop data | Open a Pet in Codex and confirm the data directory contains `.codex-global-state.json` |
+| Tray icon appears but there is no bubble | Confirm the pet is visible and the feature enabled, then choose `Show Quota Bubble`; also check client compatibility and window discovery |
+| Quota fails or differs from the desktop | Check the CLI account, launch environment, and connection, then click the bubble to retry |
+| Compiler or reference assemblies are missing | Check Framework, GAC, and WinMetadata paths in `build.ps1`; discovery for alternative build layouts is not implemented |
+| PowerShell blocks scripts | Follow your environment's execution policy and managed-device requirements |
+
+When reporting issues, include Windows and Codex versions, reproduction steps, monitor setup, and display scaling. Share only relevant diagnostic excerpts with personal information removed.
+
+### License and references
+
+There is currently no `LICENSE` file; licensing terms are still to be decided.
+
+- [Codex app-server](https://learn.chatgpt.com/docs/app-server): Quota-query protocol reference.
+- [Windows Forms and Visual Layer](https://learn.microsoft.com/en-us/windows/uwp/composition/using-the-visual-layer-with-windows-forms): Windows Composition integration.
+- [Direct2D Gaussian blur](https://learn.microsoft.com/en-us/windows/win32/direct2d/gaussian-blur): Backdrop blur reference.
+- [Adaptive Tab Bar Colour](https://github.com/atbc-org/Adaptive-Tab-Bar-Colour/blob/main/src/utils/colour.ts): `PetTheme.cs` acknowledges inspiration from its separation of source color and contrast adjustment; color sampling is independently implemented.

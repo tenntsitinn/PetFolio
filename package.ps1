@@ -4,6 +4,9 @@ $version = (Get-Content -LiteralPath (Join-Path $PSScriptRoot 'VERSION') -Raw).T
 if ($version -notmatch '^\d+\.\d+\.\d+$') { throw 'VERSION must contain a three-part version.' }
 $program = Get-Content -LiteralPath (Join-Path $PSScriptRoot 'Program.cs') -Raw
 if (-not $program.Contains('AssemblyFileVersion("' + $version + '.0")')) { throw 'VERSION and AssemblyFileVersion must match.' }
+if (-not $program.Contains('AssemblyVersion("' + $version + '.0")')) { throw 'VERSION and AssemblyVersion must match.' }
+$manifest = [xml](Get-Content -LiteralPath (Join-Path $PSScriptRoot 'app.manifest') -Raw)
+if ($manifest.assembly.assemblyIdentity.version -ne ($version + '.0')) { throw 'VERSION and manifest version must match.' }
 New-Item -ItemType Directory -Path $OutputDirectory -Force | Out-Null
 # Always build into a fresh directory; no local runtime files are packaged.
 $stage = Join-Path $OutputDirectory ('stage-' + [guid]::NewGuid().ToString('N'))
