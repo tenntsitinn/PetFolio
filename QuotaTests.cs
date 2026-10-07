@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Web.Script.Serialization;
@@ -85,7 +86,14 @@ static class QuotaTests {
             try{closed.Read();}catch(ObjectDisposedException){rejected=true;}
             Check(rejected,"Disposed source cannot launch a process");
         }
-        if(args.Length>0)Transport(args[0]);
+        if(args.Length>0) {
+            Transport(args[0]);
+            var previousEncoding=Console.InputEncoding;
+            try {
+                Console.InputEncoding=new UTF8Encoding(true);
+                Transport(args[0]);
+            }finally {Console.InputEncoding=previousEncoding;}
+        }
         Console.WriteLine(checks+" quota service checks passed");
     }
     static void Transport(string executable) {

@@ -27,5 +27,6 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           $version = (Get-Content VERSION -Raw).Trim()
-          gh release create $version "dist/PetFolio-$version-win-x64.zip" "dist/PetFolio-$version-win-x64.zip.sha256" --verify-tag --title "$version 下載解壓後即可查看 Codex Pet 剩餘額度" --notes-file RELEASE_NOTES.md
+          $title = (Get-Content RELEASE_NOTES.md -First 1) -replace '^#\s*', ''
+          gh release create $version "dist/PetFolio-$version-win-x64.zip" "dist/PetFolio-$version-win-x64.zip.sha256" --verify-tag --title $title --notes-file RELEASE_NOTES.md
           if ($LASTEXITCODE -ne 0) { throw 'Release upload failed.' }

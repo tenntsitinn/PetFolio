@@ -1,11 +1,14 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
+using System.Text;
 using System.Threading.Tasks;
 using System.Web.Script.Serialization;
 
 // All CLI protocol/process ownership stays behind IQuotaSource.
 sealed class CodexQuotaSource : IQuotaSource {
+    static readonly object launchGate = new object();
     readonly string executable;
     readonly object gate = new object();
     Process process;
@@ -14,20 +17,34 @@ sealed class CodexQuotaSource : IQuotaSource {
     public QuotaSnapshot Read() {
         var json = new JavaScriptSerializer();
         using (var p = new Process()) {
+            StreamWriter input=null;
             p.StartInfo = new ProcessStartInfo(executable, "app-server --stdio") {
                 UseShellExecute = false, CreateNoWindow = true,
-                RedirectStandardInput = true, RedirectStandardOutput = true, RedirectStandardError = true
+                RedirectStandardInput = true, RedirectStandardOutput = true, RedirectStandardError = true,
+                StandardOutputEncoding = new UTF8Encoding(false), StandardErrorEncoding = new UTF8Encoding(false)
             };
             try {
                 lock (gate) {
                     if (disposed) throw new ObjectDisposedException("CodexQuotaSource");
                     if (process != null) throw new InvalidOperationException("A quota request is already running");
-                    p.Start(); process = p;
+                    lock(launchGate) {
+                        // Framework eagerly flushes its default stdin writer during Start.
+                        // BOM-free Unicode avoids that preamble without changing the Windows
+                        // console code page (also works in a WinExe without a console).
+                        // We never use this default writer; actual requests use UTF-8 below.
+                        if(Console.InputEncoding.GetPreamble().Length>0)
+                            Console.InputEncoding=new UnicodeEncoding(false,false);
+                        p.Start();
+                    }
+                    process = p;
                 }
                 p.ErrorDataReceived += (s, e) => { }; p.BeginErrorReadLine();
-                p.StandardInput.WriteLine(json.Serialize(new { id = 1, method = "initialize",
-                    @params = new { clientInfo = new { name = "PetFolio", version = "0.2.0" } } }));
-                p.StandardInput.Flush();
+                // Framework's default writer can emit a BOM when Windows uses UTF-8.
+                // JSON-line protocols require explicit UTF-8 without a preamble.
+                input=new StreamWriter(p.StandardInput.BaseStream,new UTF8Encoding(false));
+                input.WriteLine(json.Serialize(new { id = 1, method = "initialize",
+                    @params = new { clientInfo = new { name = "PetFolio", version = typeof(CodexQuotaSource).Assembly.GetName().Version.ToString(3) } } }));
+                input.Flush();
                 bool initialized = false;
                 var timeout = Stopwatch.StartNew();
                 while (timeout.ElapsedMilliseconds < 30000) {
@@ -46,15 +63,15 @@ sealed class CodexQuotaSource : IQuotaSource {
                     if (message.ContainsKey("error")) throw new InvalidOperationException("Codex rejected quota request");
                     if (!initialized) {
                         initialized = true;
-                        p.StandardInput.WriteLine("{\"method\":\"initialized\"}");
-                        p.StandardInput.WriteLine("{\"id\":2,\"method\":\"account/rateLimits/read\"}");
-                        p.StandardInput.Flush();
+                        input.WriteLine("{\"method\":\"initialized\"}");
+                        input.WriteLine("{\"id\":2,\"method\":\"account/rateLimits/read\"}");
+                        input.Flush();
                     } else return QuotaResponse.Parse(QuotaResponse.Dict(message, "result"), DateTime.UtcNow);
                 }
                 throw new TimeoutException("Quota request timed out");
             } finally {
                 lock (gate) {
-                    try { p.StandardInput.Close(); } catch (InvalidOperationException) { }
+                    try { if(input!=null)input.Dispose();else p.StandardInput.Close(); } catch (InvalidOperationException) { }
                     catch (System.IO.IOException) { }
                     Kill(p);
                     if (process == p) process = null;
