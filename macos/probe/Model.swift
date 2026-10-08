@@ -4,9 +4,21 @@ import CoreGraphics
 enum Corner: String, Codable, CaseIterable {
     case topLeft, topRight, bottomLeft, bottomRight
 }
+enum SurfaceMaterial: String, Codable, CaseIterable { case glass, tint }
 struct Preferences: Codable {
     var corner: Corner = .topRight
     var opacity: Double = 0.9
+    var material: SurfaceMaterial = .glass
+    enum CodingKeys: String, CodingKey { case corner, opacity, material }
+    init(corner: Corner = .topRight, opacity: Double = 0.9, material: SurfaceMaterial = .glass) {
+        self.corner = corner; self.opacity = opacity; self.material = material
+    }
+    init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        corner = try values.decodeIfPresent(Corner.self, forKey: .corner) ?? .topRight
+        opacity = try values.decodeIfPresent(Double.self, forKey: .opacity) ?? 0.9
+        material = try values.decodeIfPresent(SurfaceMaterial.self, forKey: .material) ?? .glass
+    }
     static func load(_ url: URL) -> Preferences {
         guard let data = try? Data(contentsOf: url), var value = try? JSONDecoder().decode(Self.self, from: data) else { return Self() }
         value.opacity = min(1, max(0.1, value.opacity.isFinite ? value.opacity : 0.9))

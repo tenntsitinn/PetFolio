@@ -13,6 +13,17 @@ close button appears on hover outside the upper-left corner. Native materials
 and font rendering still differ from Windows; this is layout parity, not a claim
 of identical glass composition or pet colors.
 
+Material can be switched between Frosted glass (`NSVisualEffectView` with live
+behind-window blending) and Transparent tint without blur. Opacity 10–100% means
+background tint coverage: blur stays active in glass mode, while 100% tint covers
+the backdrop. Text and window alpha remain 100%. These are AppKit materials, not
+macOS 26 Liquid Glass. Material and opacity survive restarts; older preferences
+without a material field retain their corner/opacity and default to glass.
+
+CI places a sharp patterned window behind the panel and captures 12 actual
+desktop images: glass/tint × light/dark appearance × 10/60/100% opacity. View-cache
+PNGs are only layout references and cannot validate behind-window blur.
+
 Quota protocol and process ownership are separate from the UI. Set
 `PETFOLIO_CODEX_EXECUTABLE` to an absolute CLI executable to use stdio quota reads;
 without it, the preview shows synthetic data. CI always uses a fake CLI and tests
@@ -32,6 +43,6 @@ Desktop capture may fail or omit windows; inspect the actual image before claimi
 desktop capture works. View snapshots do not prove backdrop composition, real Pet
 tracking, permissions, input handling, or multi-display compatibility.
 
-On a Mac: `swiftc macos/probe/Model.swift macos/probe/main.swift -framework AppKit -o /tmp/petfolio-probe`,
+On a Mac: `swiftc macos/probe/Model.swift macos/probe/Surface.swift macos/probe/main.swift -framework AppKit -o /tmp/petfolio-probe`,
 then `/tmp/petfolio-probe /tmp/petfolio-probe-output`. It remains running until Exit.
 Add `--ci` only for the automated synthetic verification mode.

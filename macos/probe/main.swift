@@ -74,12 +74,16 @@ final class Host: NSObject {
     let panel: BubblePanel
     let view: BubbleView
     let effect: NSVisualEffectView
+    let tint = TintView()
     let textView = QuotaTextView()
     let quota = DisplayLabel(labelWithString: "Reading quota...")
     let caption = DisplayLabel(labelWithString: "")
     let dismissPanel: BubblePanel
     let pet: NSWindow
     let status: NSStatusItem
+    var backdrop: NSWindow?
+    var opacityItems: [NSMenuItem] = []
+    var materialItems: [NSMenuItem] = []
     var hidden = false, busy = false
     var last: Quota?
     var lastChecked: Date?
@@ -107,9 +111,13 @@ final class Host: NSObject {
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         panel.hidesOnDeactivate = false; panel.contentView = view
         effect.material = .hudWindow; effect.blendingMode = .behindWindow; effect.state = .active
-        effect.wantsLayer = true; effect.layer?.cornerRadius = 32; effect.layer?.masksToBounds = true
-        effect.alphaValue = preferences.opacity
+        effect.wantsLayer = true
+        let mask = NSImage(size: frame.size, flipped: false) { rect in
+            NSColor.black.setFill(); NSBezierPath(roundedRect: rect, xRadius: 32, yRadius: 32).fill(); return true
+        }
+        effect.maskImage = mask
         view.addSubview(effect)
+        tint.frame = frame; view.addSubview(tint)
         textView.frame = frame
         textView.content = { [weak self] in (self?.quota.stringValue ?? "", self?.caption.stringValue ?? "") }
         view.addSubview(textView)
@@ -149,10 +157,19 @@ final class Host: NSObject {
         for value in stride(from: 10, through: 100, by: 10) {
             let item = submenu.addItem(withTitle: "\(value)%", action: #selector(setOpacity(_:)), keyEquivalent: "")
             item.tag = value; item.target = self
+            opacityItems.append(item)
         }
         opacity.submenu = submenu; menu.addItem(opacity)
+        let material = NSMenuItem(title: "Material", action: nil, keyEquivalent: "")
+        let materialMenu = NSMenu()
+        for (index, value) in SurfaceMaterial.allCases.enumerated() {
+            let item = materialMenu.addItem(withTitle: value == .glass ? "Frosted glass" : "Transparent tint (no blur)", action: #selector(setMaterial(_:)), keyEquivalent: "")
+            item.tag = index; item.target = self; materialItems.append(item)
+        }
+        material.submenu = materialMenu; menu.addItem(material)
         let quit = menu.addItem(withTitle: "Exit", action: #selector(exitApp), keyEquivalent: "q"); quit.target = self
         status.menu = menu
+        applySurface()
     }
     func save() { do { try preferences.save(preferencesURL) } catch { caption.stringValue = "Preferences could not be saved" } }
     func timeText(_ date: Date) -> String {
@@ -174,6 +191,11 @@ final class Host: NSObject {
         if hover { dismissPanel.orderFrontRegardless() } else { dismissPanel.orderOut(nil) }
     }
     func start() {
+        if ci {
+            let window = NSWindow(contentRect: NSRect(x: 320, y: 230, width: 430, height: 250), styleMask: [.borderless], backing: .buffered, defer: false)
+            window.isReleasedWhenClosed = false; window.contentView = PatternView(frame: NSRect(x: 0, y: 0, width: 430, height: 250))
+            window.orderFrontRegardless(); backdrop = window
+        }
         pet.orderFrontRegardless(); follow(); refresh()
         followTimer = Timer.scheduledTimer(withTimeInterval: 1.0 / 30, repeats: true) { [weak self] _ in self?.follow() }
         refreshTimer = Timer.scheduledTimer(withTimeInterval: 300, repeats: true) { [weak self] _ in self?.refresh() }
@@ -181,7 +203,16 @@ final class Host: NSObject {
     }
     @objc func hide() { hidden = true; panel.orderOut(nil); dismissPanel.orderOut(nil) }
     @objc func restore() { hidden = false; follow() }
-    @objc func setOpacity(_ item: NSMenuItem) { preferences.opacity = Double(item.tag) / 100; effect.alphaValue = preferences.opacity; save() }
+    func applySurface() {
+        effect.isHidden = preferences.material != .glass
+        effect.alphaValue = 1
+        tint.opacity = CGFloat(preferences.opacity)
+        for item in opacityItems { item.state = item.tag == Int((preferences.opacity * 100).rounded()) ? .on : .off }
+        for item in materialItems { item.state = SurfaceMaterial.allCases[item.tag] == preferences.material ? .on : .off }
+        textView.needsDisplay = true
+    }
+    @objc func setOpacity(_ item: NSMenuItem) { preferences.opacity = Double(item.tag) / 100; applySurface(); save() }
+    @objc func setMaterial(_ item: NSMenuItem) { preferences.material = SurfaceMaterial.allCases[item.tag]; applySurface(); save() }
     @objc func exitApp() { followTimer?.invalidate(); refreshTimer?.invalidate(); app.terminate(nil) }
     @objc func refresh() {
         guard !busy else { return }; busy = true; queryCount += 1
@@ -228,22 +259,49 @@ final class Host: NSObject {
                 preferences.corner = corner; follow(); try snapshot("panel-\(corner.rawValue).png")
             }
             preferences.corner = .topRight; preferences.opacity = 0.6
-            effect.alphaValue = preferences.opacity; save()
+            applySurface(); save()
             precondition(Preferences.load(preferencesURL).corner == .topRight && Preferences.load(preferencesURL).opacity == 0.6)
             try snapshot("panel-opacity-60.png")
             hide(); precondition(!panel.isVisible); restore(); precondition(panel.isVisible)
             pet.orderOut(nil); follow(); precondition(!panel.isVisible)
             pet.orderFrontRegardless(); follow(); precondition(panel.isVisible)
-            caption.stringValue = "updated 17:53"; preferences.opacity = 0.9; effect.alphaValue = 0.9; save()
+            caption.stringValue = "updated 17:53"; preferences.opacity = 0.9; applySurface(); save()
             let count = queryCount; refresh(); refresh(); precondition(queryCount == count + 1)
             let result: [String: Any] = ["mode": "native-development", "realCodexPetTested": false,
                 "panelVisible": panel.isVisible, "nonactivatingPanel": !panel.canBecomeKey,
                 "hideRestorePassed": true, "preferencesPassed": true, "refreshCoalescingPassed": true,
                 "syntheticFollowGap": panel.frame.minX - pet.frame.maxX,
                 "screens": NSScreen.screens.map { NSStringFromRect($0.frame) }]
-            try JSONSerialization.data(withJSONObject: result, options: [.prettyPrinted, .sortedKeys]).write(to: output.appendingPathComponent("probe.json"))
-            print("PROBE_READY"); fflush(stdout)
+            captureSurfaces(result: result)
         } catch { fputs("CI verification failed: \(error)\n", stderr); exit(1) }
+    }
+    func captureSurfaces(result: [String: Any], index: Int = 0) {
+        let cases = [SurfaceMaterial.glass, .tint].flatMap { material in
+            [false, true].flatMap { dark in [0.1, 0.6, 1.0].map { (material, dark, $0) } }
+        }
+        guard index < cases.count else {
+            panel.appearance = nil; preferences.material = .glass; preferences.opacity = 0.9; applySurface(); save()
+            do {
+                try JSONSerialization.data(withJSONObject: result, options: [.prettyPrinted, .sortedKeys]).write(to: output.appendingPathComponent("probe.json"))
+                print("PROBE_READY"); fflush(stdout)
+            } catch { fputs("Surface result failed: \(error)\n", stderr); exit(1) }
+            return
+        }
+        let (material, dark, opacity) = cases[index]
+        panel.appearance = NSAppearance(named: dark ? .darkAqua : .aqua)
+        preferences.material = material; preferences.opacity = opacity; applySurface()
+        precondition(panel.alphaValue == 1 && textView.alphaValue == 1 && effect.alphaValue == 1)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+            do {
+                let name = "surface-\(material.rawValue)-\(dark ? "dark" : "light")-\(Int(opacity * 100))"
+                let process = Process()
+                process.executableURL = URL(fileURLWithPath: "/usr/sbin/screencapture")
+                process.arguments = ["-x", self.output.appendingPathComponent(name + ".png").path]
+                try process.run(); process.waitUntilExit()
+                guard process.terminationStatus == 0 else { throw ProbeError.unavailable }
+                self.captureSurfaces(result: result, index: index + 1)
+            } catch { fputs("Compositor capture failed: \(error)\n", stderr); exit(1) }
+        }
     }
 }
 

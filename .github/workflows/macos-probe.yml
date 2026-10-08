@@ -26,7 +26,7 @@ jobs:
           <key>CFBundlePackageType</key><string>APPL</string>
           </dict></plist>
           PLIST
-          swiftc macos/probe/Model.swift macos/probe/main.swift -o PetFolioProbe.app/Contents/MacOS/PetFolioProbe -framework AppKit
+          swiftc macos/probe/Model.swift macos/probe/Surface.swift macos/probe/main.swift -o PetFolioProbe.app/Contents/MacOS/PetFolioProbe -framework AppKit
           codesign --force --sign - PetFolioProbe.app
       - name: Test positioning, preferences and CLI protocol
         run: |
@@ -40,7 +40,7 @@ jobs:
           PetFolioProbe.app/Contents/MacOS/PetFolioProbe "$PWD/artifacts" --ci > artifacts/app.log 2>&1 &
           probe_pid=$!
           trap 'kill "$probe_pid" 2>/dev/null || true' EXIT
-          for attempt in {1..20}; do
+          for attempt in {1..50}; do
             test ! -f artifacts/probe.json || break
             kill -0 "$probe_pid" || { cat artifacts/app.log; exit 1; }
             sleep 1
