@@ -3,12 +3,13 @@ import AppKit
 // Solid tint fallback. Native glass opacity is controlled on its separate
 // visual-effect layer; neither the window nor the text layer is faded.
 final class TintView: NSView {
+    var source = PetRGB.fallback { didSet { needsDisplay = true } }
     var opacity: CGFloat = 0.9 { didSet { needsDisplay = true } }
     override func hitTest(_ point: NSPoint) -> NSView? { nil }
     override func draw(_ dirtyRect: NSRect) {
         let path = NSBezierPath(roundedRect: bounds.insetBy(dx: 0.5, dy: 0.5), xRadius: 31.5, yRadius: 31.5)
-        NSColor.windowBackgroundColor.withAlphaComponent(opacity).setFill(); path.fill()
-        NSColor.labelColor.withAlphaComponent(0.12).setStroke(); path.lineWidth = 1; path.stroke()
+        source.color.withAlphaComponent(opacity).setFill(); path.fill()
+        source.text.color.withAlphaComponent(60.0 / 255).setStroke(); path.lineWidth = 1; path.stroke()
     }
 }
 

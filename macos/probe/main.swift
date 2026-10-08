@@ -9,12 +9,13 @@ final class DisplayEffect: NSVisualEffectView {
 // Match QuotaLabel.cs in 1.1.1: 190x96, left inset 24, right edge 166,
 // title at 12, bold rows at 34/54, status at 76. macOS uses logical points.
 final class QuotaTextView: NSView {
+    var source = PetRGB.fallback { didSet { needsDisplay = true } }
     override var isFlipped: Bool { true }
     override func hitTest(_ point: NSPoint) -> NSView? { nil }
     var content: (() -> (String, String))?
     override func draw(_ dirtyRect: NSRect) {
         guard let (rows, status) = content?() else { return }
-        let ink = NSColor.labelColor, muted = NSColor.secondaryLabelColor
+        let ink = source.text.color, muted = source.secondary.color
         func text(_ value: String, rect: NSRect, font: NSFont, color: NSColor, right: Bool = false) {
             let paragraph = NSMutableParagraphStyle()
             paragraph.alignment = right ? .right : .left
@@ -75,6 +76,13 @@ final class Host: NSObject {
     let view: BubbleView
     let effect: NSVisualEffectView
     let tint = TintView()
+    let palette = PetPaletteSource()
+    var petColor = PetRGB.fallback
+    var demoImages: [URL] = []
+    let demoColors = [PetRGB(r: 255, g: 153, b: 0), PetRGB(r: 38, g: 101, b: 190), PetRGB(r: 147, g: 76, b: 182), PetRGB(r: 235, g: 235, b: 235)]
+    var selectedImage: URL?
+    var imageStamp = ""
+    var paletteTimer: Timer?
     let textView = QuotaTextView()
     let quota = DisplayLabel(labelWithString: "Reading quota...")
     let caption = DisplayLabel(labelWithString: "")
@@ -169,6 +177,19 @@ final class Host: NSObject {
         material.submenu = materialMenu; menu.addItem(material)
         let quit = menu.addItem(withTitle: "Exit", action: #selector(exitApp), keyEquivalent: "q"); quit.target = self
         status.menu = menu
+        let demoMenuItem = NSMenuItem(title: "Demo pet", action: nil, keyEquivalent: "")
+        let demoMenu = NSMenu()
+        for (index, name) in ["Orange", "Blue", "Purple", "White"].enumerated() {
+            let item = demoMenu.addItem(withTitle: name, action: #selector(selectPet(_:)), keyEquivalent: "")
+            item.tag = index; item.target = self
+        }
+        demoMenuItem.submenu = demoMenu; menu.insertItem(demoMenuItem, at: 1)
+        palette.onColor = { [weak self] color in
+            guard let self else { return }
+            self.petColor = color; self.tint.source = color; self.textView.source = color
+            self.pet.contentView?.layer?.backgroundColor = color.color.cgColor
+            self.applySurface()
+        }
         applySurface()
     }
     func save() { do { try preferences.save(preferencesURL) } catch { caption.stringValue = "Preferences could not be saved" } }
@@ -191,6 +212,19 @@ final class Host: NSObject {
         if hover { dismissPanel.orderFrontRegardless() } else { dismissPanel.orderOut(nil) }
     }
     func start() {
+        do {
+            let directory = preferencesURL.deletingLastPathComponent().appendingPathComponent("demo-pets")
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            for (index, color) in demoColors.enumerated() {
+                let bitmap = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: 48, pixelsHigh: 48, bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true, isPlanar: false, colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0)!
+                for y in 0..<48 { for x in 0..<48 { bitmap.setColor(x >= 4 && x < 44 && y >= 4 && y < 44 ? color.color : .clear, atX: x, y: y) } }
+                let url = directory.appendingPathComponent("\(index).png")
+                try bitmap.representation(using: .png, properties: [:])!.write(to: url); demoImages.append(url)
+            }
+            selectedImage = ProcessInfo.processInfo.environment["PETFOLIO_PET_SPRITE"].map { URL(fileURLWithPath: $0) } ?? demoImages.first
+            updatePalette()
+        } catch { fputs("Demo palette setup failed: \(error)\n", stderr) }
+        paletteTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in self?.updatePalette() }
         if ci {
             let window = NSWindow(contentRect: NSRect(x: 320, y: 230, width: 430, height: 250), styleMask: [.borderless], backing: .buffered, defer: false)
             window.isReleasedWhenClosed = false; window.contentView = PatternView(frame: NSRect(x: 0, y: 0, width: 430, height: 250))
@@ -208,14 +242,26 @@ final class Host: NSObject {
         // Fade the native material, not the whole window: a full-strength HUD
         // material can look solid even with a nearly transparent extra tint.
         effect.alphaValue = preferences.opacity
-        tint.opacity = preferences.material == .glass ? 0 : CGFloat(preferences.opacity)
+        // Keep native blur beneath source-colored tint. Text stays independent.
+        tint.opacity = CGFloat(preferences.opacity) * (preferences.material == .glass ? 0.75 : 1)
         for item in opacityItems { item.state = item.tag == Int((preferences.opacity * 100).rounded()) ? .on : .off }
         for item in materialItems { item.state = SurfaceMaterial.allCases[item.tag] == preferences.material ? .on : .off }
         textView.needsDisplay = true
     }
     @objc func setOpacity(_ item: NSMenuItem) { preferences.opacity = Double(item.tag) / 100; applySurface(); save() }
     @objc func setMaterial(_ item: NSMenuItem) { preferences.material = SurfaceMaterial.allCases[item.tag]; applySurface(); save() }
-    @objc func exitApp() { followTimer?.invalidate(); refreshTimer?.invalidate(); app.terminate(nil) }
+    @objc func selectPet(_ item: NSMenuItem) {
+        guard demoImages.indices.contains(item.tag) else { return }
+        selectedImage = demoImages[item.tag]; imageStamp = ""; updatePalette()
+    }
+    func updatePalette() {
+        guard let url = selectedImage else { return }
+        let attributes = try? FileManager.default.attributesOfItem(atPath: url.path)
+        let stamp = "\(url.path)|\(String(describing: attributes?[.modificationDate]))|\(String(describing: attributes?[.size]))"
+        guard stamp != imageStamp else { return }; imageStamp = stamp
+        palette.select(url)
+    }
+    @objc func exitApp() { followTimer?.invalidate(); refreshTimer?.invalidate(); paletteTimer?.invalidate(); app.terminate(nil) }
     @objc func refresh() {
         guard !busy else { return }; busy = true; queryCount += 1
         caption.stringValue = "Updating..."
@@ -275,8 +321,30 @@ final class Host: NSObject {
                 "reduceTransparency": NSWorkspace.shared.accessibilityDisplayShouldReduceTransparency,
                 "syntheticFollowGap": panel.frame.minX - pet.frame.maxX,
                 "screens": NSScreen.screens.map { NSStringFromRect($0.frame) }]
-            captureSurfaces(result: result)
+            capturePetColors(result: result)
         } catch { fputs("CI verification failed: \(error)\n", stderr); exit(1) }
+    }
+    func capturePetColors(result: [String: Any], index: Int = 0, attempt: Int = 0) {
+        guard index < demoColors.count else { captureSurfaces(result: result); return }
+        if attempt == 0 {
+            selectedImage = demoImages[index]; imageStamp = ""; updatePalette()
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+            let expected = self.demoColors[index]
+            guard abs(self.petColor.r - expected.r) + abs(self.petColor.g - expected.g) + abs(self.petColor.b - expected.b) <= 6 else {
+                precondition(attempt < 25, "Palette did not settle")
+                self.capturePetColors(result: result, index: index, attempt: attempt + 1); return
+            }
+            precondition(self.textView.source.text.contrast(self.petColor) >= 4.5)
+            self.caption.stringValue = "updated 17:53"
+            do {
+                try self.snapshot("pet-color-\(index).png")
+                let process = Process(); process.executableURL = URL(fileURLWithPath: "/usr/sbin/screencapture")
+                process.arguments = ["-x", self.output.appendingPathComponent("pet-color-\(index)-desktop.png").path]
+                try process.run(); process.waitUntilExit(); precondition(process.terminationStatus == 0)
+                self.capturePetColors(result: result, index: index + 1)
+            } catch { fputs("Pet color capture failed: \(error)\n", stderr); exit(1) }
+        }
     }
     func captureSurfaces(result: [String: Any], index: Int = 0) {
         let cases = [SurfaceMaterial.glass, .tint].flatMap { material in

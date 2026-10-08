@@ -33,6 +33,31 @@ import CoreGraphics
             precondition(rejected)
         }
         unsetenv("PETFOLIO_FAKE_MODE")
+        let orange = PetRGB(r: 255, g: 153, b: 0), blue = PetRGB(r: 38, g: 101, b: 190), purple = PetRGB(r: 147, g: 76, b: 182)
+        var pixels = [UInt8](repeating: 0, count: 32 * 32 * 4)
+        for y in 4..<28 { for x in 4..<28 {
+            let i = (y * 32 + x) * 4
+            pixels[i] = 255; pixels[i + 1] = 153; pixels[i + 3] = 255
+        } }
+        precondition(PetPalette.dominant(rgba: pixels, width: 32, height: 32) == orange)
+        precondition(PetPalette.dominant(rgba: [UInt8](repeating: 0, count: 4096), width: 32, height: 32) == nil)
+        precondition(PetPalette.read(root.appendingPathComponent("missing.png")) == nil)
+        for value in [orange, blue, purple, PetRGB(r: 235, g: 235, b: 235), .fallback] {
+            precondition(value.contrast(value.text) >= 4.5)
+            precondition(value.contrast(value.secondary) >= 4.5)
+        }
+        var events: [PetRGB] = []
+        let source = PetPaletteSource(reader: { url in
+            if url.lastPathComponent == "A-old" { Thread.sleep(forTimeInterval: 0.25); return orange }
+            if url.lastPathComponent == "B" { Thread.sleep(forTimeInterval: 0.1); return blue }
+            return purple
+        })
+        source.onColor = { events.append($0) }
+        for name in ["A-old", "B", "A-new"] { source.select(root.appendingPathComponent(name)) }
+        let deadline = Date().addingTimeInterval(0.5)
+        while Date() < deadline { RunLoop.main.run(until: Date().addingTimeInterval(0.01)) }
+        precondition(events.last == purple && !events.contains(orange) && !events.contains(blue))
         print("PASS: placement, edge fallback, preferred restoration, preferences, stdio success/error/EOF/timeout")
+        print("PASS: transparent-image sampling, missing-image fallback, text contrast, asynchronous stale A/B/A rejection")
     }
 }
