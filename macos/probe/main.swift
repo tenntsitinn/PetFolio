@@ -110,7 +110,7 @@ final class Host: NSObject {
         panel.hasShadow = true; panel.level = .floating
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         panel.hidesOnDeactivate = false; panel.contentView = view
-        effect.material = .hudWindow; effect.blendingMode = .behindWindow; effect.state = .active
+        effect.material = .popover; effect.blendingMode = .behindWindow; effect.state = .active
         effect.wantsLayer = true
         let mask = NSImage(size: frame.size, flipped: false) { rect in
             NSColor.black.setFill(); NSBezierPath(roundedRect: rect, xRadius: 32, yRadius: 32).fill(); return true
@@ -205,8 +205,10 @@ final class Host: NSObject {
     @objc func restore() { hidden = false; follow() }
     func applySurface() {
         effect.isHidden = preferences.material != .glass
-        effect.alphaValue = 1
-        tint.opacity = CGFloat(preferences.opacity)
+        // Fade the native material, not the whole window: a full-strength HUD
+        // material can look solid even with a nearly transparent extra tint.
+        effect.alphaValue = preferences.opacity
+        tint.opacity = preferences.material == .glass ? 0 : CGFloat(preferences.opacity)
         for item in opacityItems { item.state = item.tag == Int((preferences.opacity * 100).rounded()) ? .on : .off }
         for item in materialItems { item.state = SurfaceMaterial.allCases[item.tag] == preferences.material ? .on : .off }
         textView.needsDisplay = true
@@ -290,7 +292,7 @@ final class Host: NSObject {
         let (material, dark, opacity) = cases[index]
         panel.appearance = NSAppearance(named: dark ? .darkAqua : .aqua)
         preferences.material = material; preferences.opacity = opacity; applySurface()
-        precondition(panel.alphaValue == 1 && textView.alphaValue == 1 && effect.alphaValue == 1)
+        precondition(panel.alphaValue == 1 && textView.alphaValue == 1 && effect.alphaValue == opacity)
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
             do {
                 let name = "surface-\(material.rawValue)-\(dark ? "dark" : "light")-\(Int(opacity * 100))"

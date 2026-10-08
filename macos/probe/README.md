@@ -15,8 +15,10 @@ of identical glass composition or pet colors.
 
 Material can be switched between Frosted glass (`NSVisualEffectView` with live
 behind-window blending) and Transparent tint without blur. Opacity 10–100% means
-background tint coverage: blur stays active in glass mode, while 100% tint covers
-the backdrop. Text and window alpha remain 100%. These are AppKit materials, not
+background-layer opacity: glass mode fades the native popover material as a whole;
+tint mode fades a plain system-colored fill without blur. Text and window alpha
+remain 100%. Native glass at 100% retains its system translucency, while tint at
+100% is opaque. These are AppKit materials, not
 macOS 26 Liquid Glass. Material and opacity survive restarts; older preferences
 without a material field retain their corner/opacity and default to glass.
 

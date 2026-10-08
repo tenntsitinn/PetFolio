@@ -1,7 +1,7 @@
 import AppKit
 
-// Opacity controls only the tint coverage. The live backdrop remains blurred;
-// neither window alpha nor the text layer is faded.
+// Solid tint fallback. Native glass opacity is controlled on its separate
+// visual-effect layer; neither the window nor the text layer is faded.
 final class TintView: NSView {
     var opacity: CGFloat = 0.9 { didSet { needsDisplay = true } }
     override func hitTest(_ point: NSPoint) -> NSView? { nil }
