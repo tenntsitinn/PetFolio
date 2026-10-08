@@ -1,4 +1,9 @@
-# 1.1.0 支援 Codex 插件啟停與升級後的 CLI 自動尋找
+# 1.1.1 補齊插件快速開始與原始碼版本說明
+
+- 補齊 README 中英文插件建置與安裝步驟，說明自訂 `CODEX_HOME` 及保留 marketplace 來源目錄。
+- 修正使用者資料目錄需求，區分原始碼更新與已發佈的 Release。執行功能沿用 1.1.0。
+
+## 沿用的功能
 
 - 提供 Windows x64 可攜版及 Codex 本機插件包；插件透過 skill 與 PowerShell 管理啟動、恢復、停止及環境檢查。
 - 外觀偏好與配色快取移至 `%LOCALAPPDATA%\PetFolio`，首次啟動遷移程式旁的舊資料；插件更新或卸載保留偏好。
@@ -7,6 +12,6 @@
 - 增加資料遷移、單實例控制、背景啟動及插件安裝／卸載驗證。
 - 新增 `PLUGIN.md` 安裝與驗證說明；目前仍只支援 Windows，尚無 MCP 控制介面。
 
-正式發佈時可攜版檔名為 `PetFolio-1.1.0-win-x64.zip`，插件包為 `PetFolio-1.1.0-plugin-win-x64.zip`。原始碼提交不會自動建立下載包；可執行 `package.ps1` 或 `package-plugin.ps1` 自行建置。
+正式發佈時可攜版檔名為 `PetFolio-1.1.1-win-x64.zip`，插件包為 `PetFolio-1.1.1-plugin-win-x64.zip`。原始碼提交不會自動建立下載包；可執行 `package.ps1` 或 `package-plugin.ps1` 自行建置。
 需要 Windows x64、.NET Framework 4.8、Codex 桌面端、可見的 Pet 與已登入的 Codex CLI。
 可用 `.sha256` 檔核對下載完整性；目前執行檔沒有數位簽章。

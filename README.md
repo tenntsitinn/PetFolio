@@ -27,7 +27,15 @@ PetFolio 讓桌面寵物成為工作時有用的小夥伴。第一個功能 **Qu
 
 ### Codex 插件（本機測試）
 
-執行 `./package-plugin.ps1` 會產生 Windows 插件 ZIP 及本機 marketplace。使用 `codex plugin marketplace add './dist/petfolio-marketplace'` 註冊來源，再執行 `codex plugin add petfolio@petfolio-local` 安裝。安裝後可在新對話中要求「開啟 PetFolio 額度氣泡」「停止 PetFolio」或「檢查 PetFolio 狀態」。插件不會隨安裝自動啟動。
+下載或 clone 本倉庫原始碼，在專案根目錄開啟 PowerShell，執行：
+
+```powershell
+.\package-plugin.ps1
+codex plugin marketplace add '.\dist\petfolio-marketplace'
+codex plugin add petfolio@petfolio-local
+```
+
+第一步會建置程式並產生插件包及本機 marketplace；後兩步安裝到當前 `CODEX_HOME`，使用自訂 Codex 資料位置時請先設定此環境變數。安裝後重啟 Codex，在新對話中要求「開啟 PetFolio 額度氣泡」「停止 PetFolio」或「檢查 PetFolio 狀態」。插件不會隨安裝自動啟動；請保留 `dist\petfolio-marketplace` 作為插件來源。
 
 完整建置、隔離驗證、升級與卸載方式見 [PLUGIN.md](PLUGIN.md)。
 
@@ -37,14 +45,16 @@ PetFolio 讓桌面寵物成為工作時有用的小夥伴。第一個功能 **Qu
 - 已安裝 Codex 桌面端，並已開啟可見的 Pet。
 - 已登入、可回傳額度資料的 Codex CLI（`codex.exe`）。查詢額度需要 CLI 能連線至服務。
 - .NET Framework 4.8（一般 Windows 10／11 已具備）。從原始碼建置另需 PowerShell、`build.ps1` 指定的編譯器、組件與 Windows WinMetadata。
-- 解壓後的程式資料夾可寫入，供儲存本機設定、快照與診斷紀錄。
+- 使用者資料目錄 `%LOCALAPPDATA%\PetFolio` 可寫入，供儲存本機設定、快照與診斷紀錄；也可用絕對 `PETFOLIO_DATA_DIR` 覆寫。
 
 目前使用腳本直接編譯 C#，沒有 `.csproj` 或 NuGet 還原步驟。一般建置與執行不需要 Python；Windows 版本及不同安裝環境的相容性仍需驗證。
 
-### 下載即用（推薦）
+### 使用已發佈的可攜版
+
+`main` 的原始碼更新不會自動更新 Release。需要本次插件及啟動修復時，請依上面的插件步驟或下面的原始碼步驟建置；下載前請確認 Release 的版本與說明。
 
 1. 前往 [最新版本下載](https://github.com/tenntsitinn/PetFolio/releases/latest)，下載 Assets 中的 `PetFolio-版本號-win-x64.zip`。
-2. 解壓到可寫入的資料夾，開啟 Codex 並顯示 Pet。
+2. 解壓到本機資料夾，開啟 Codex 並顯示 Pet。舊版可能仍將設定寫在程式旁，需要該資料夾可寫入。
 3. 雙擊解壓後的 `PetFolio.exe`。可為它建立桌面快捷方式，圖標已內嵌。
 
 不需編譯、Python 或執行啟動腳本。GitHub 自動提供的 **Source code** 壓縮檔只包含原始碼，請下載上面的 Windows 包。請先解壓，勿在 ZIP 裡直接執行。系統匣選擇 **Exit** 即可退出。
@@ -264,7 +274,15 @@ Quota comes from the **CLI login account**. PetFolio currently does not verify t
 
 #### Codex plugin (local testing)
 
-Run `./package-plugin.ps1`, register the generated marketplace with `codex plugin marketplace add './dist/petfolio-marketplace'`, then install with `codex plugin add petfolio@petfolio-local`. In a new chat, ask to open, stop, or check PetFolio. Installation does not automatically launch the companion. See [PLUGIN.md](PLUGIN.md) for build, isolated testing, update, and uninstall instructions.
+Download or clone this repository and open PowerShell in its root:
+
+```powershell
+.\package-plugin.ps1
+codex plugin marketplace add '.\dist\petfolio-marketplace'
+codex plugin add petfolio@petfolio-local
+```
+
+The first command builds the application and generates the plugin package and local marketplace. Installation uses the current `CODEX_HOME`; set it first if your Codex data uses a custom location. Restart Codex and ask to open, stop, or check PetFolio in a new chat. Installation does not automatically launch the companion. Keep `dist\petfolio-marketplace` as the plugin source. See [PLUGIN.md](PLUGIN.md) for isolated testing, updates, and removal.
 
 #### Requirements
 
@@ -272,14 +290,16 @@ Run `./package-plugin.ps1`, register the generated marketplace with `codex plugi
 - Codex desktop installed, with a visible Pet enabled.
 - A logged-in Codex CLI (`codex.exe`) that can return quota information. Quota queries require a working network connection.
 - .NET Framework 4.8, normally included with Windows 10/11. Building from source additionally requires PowerShell and the compiler, assemblies, and Windows WinMetadata referenced by `build.ps1`.
-- A writable application directory for local settings, snapshots, and diagnostic logs.
+- A writable user data directory at `%LOCALAPPDATA%\PetFolio`, or an absolute directory specified by `PETFOLIO_DATA_DIR`, for settings, snapshots, and diagnostic logs.
 
 The source build uses C# compiler scripts, with no `.csproj` or NuGet restore step. Normal builds and application use do not require Python. Compatibility across Windows versions and installation layouts still needs wider validation.
 
-#### Download and run (recommended)
+#### Use a published portable release
+
+Updates to source on `main` do not automatically update Releases. Build from source using the plugin steps above or the source steps below for the current plugin and startup fixes. Check the Release version and notes before downloading.
 
 1. Open the [latest release](https://github.com/tenntsitinn/PetFolio/releases/latest) and download `PetFolio-VERSION-win-x64.zip` from **Assets**.
-2. Extract it into a writable folder. Open Codex and show your Pet.
+2. Extract it into a local folder. Open Codex and show your Pet. Older releases may store settings beside the executable and require that folder to be writable.
 3. Double-click the extracted `PetFolio.exe`. You can create a desktop shortcut; the icon is embedded.
 
 No compilation, Python, or launcher script is required. GitHub's automatic **Source code** archives contain source files; download the Windows package instead. Extract the ZIP before running the application. Choose **Exit** in the system tray to stop it.
