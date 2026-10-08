@@ -1,4 +1,5 @@
 import Foundation
+import CoreGraphics
 
 enum Corner: String, Codable, CaseIterable {
     case topLeft, topRight, bottomLeft, bottomRight

@@ -1,4 +1,5 @@
 import Foundation
+import CoreGraphics
 
 @main struct Tests {
     static func main() throws {
