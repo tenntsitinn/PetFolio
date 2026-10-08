@@ -1,0 +1,61 @@
+name: macOS native GUI probe
+on:
+  push:
+    branches: ['codex/macos-runner-probe']
+    paths: ['macos/probe/**', '.github/workflows/macos-probe.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: macos-15
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Record environment and build native app
+        run: |
+          mkdir -p artifacts PetFolioProbe.app/Contents/MacOS
+          { sw_vers; uname -m; xcodebuild -version; swift --version; } > artifacts/environment.txt
+          cat > PetFolioProbe.app/Contents/Info.plist <<'PLIST'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0"><dict>
+          <key>CFBundleExecutable</key><string>PetFolioProbe</string>
+          <key>CFBundleIdentifier</key><string>dev.petfolio.ci-probe</string>
+          <key>CFBundleName</key><string>PetFolioProbe</string>
+          <key>CFBundlePackageType</key><string>APPL</string>
+          </dict></plist>
+          PLIST
+          swiftc macos/probe/main.swift -o PetFolioProbe.app/Contents/MacOS/PetFolioProbe -framework AppKit
+          codesign --force --sign - PetFolioProbe.app
+      - name: Run, capture, and validate probe
+        run: |
+          PetFolioProbe.app/Contents/MacOS/PetFolioProbe "$PWD/artifacts" > artifacts/app.log 2>&1 &
+          probe_pid=$!
+          trap 'kill "$probe_pid" 2>/dev/null || true' EXIT
+          for attempt in {1..20}; do
+            test ! -f artifacts/probe.json || break
+            kill -0 "$probe_pid" || { cat artifacts/app.log; exit 1; }
+            sleep 1
+          done
+          test -f artifacts/probe.json
+          /usr/sbin/screencapture -x artifacts/desktop.png > artifacts/capture.log 2>&1 || echo 'Desktop capture unavailable' >> artifacts/capture.log
+          python3 - <<'PY'
+          import json, pathlib, struct
+          root = pathlib.Path('artifacts')
+          result = json.loads((root / 'probe.json').read_text())
+          assert result['panelVisible'] and result['syntheticFollowGap'] == 16, result
+          for name in ['panel-normal.png', 'panel-updating.png', 'panel-failed.png']:
+              data = (root / name).read_bytes()
+              assert data[:8] == b'\x89PNG\r\n\x1a\n'
+              width, height = struct.unpack('>II', data[16:24])
+              assert width >= 300 and height >= 150
+          PY
+          ditto -c -k --keepParent PetFolioProbe.app artifacts/PetFolioProbe.app.zip
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: macos-native-probe
+          path: artifacts/
+          if-no-files-found: error
+          retention-days: 14
