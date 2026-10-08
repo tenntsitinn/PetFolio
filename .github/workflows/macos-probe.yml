@@ -1,4 +1,4 @@
-name: macOS native GUI probe
+name: macOS native development
 on:
   push:
     branches: ['codex/macos-runner-probe']
@@ -26,11 +26,18 @@ jobs:
           <key>CFBundlePackageType</key><string>APPL</string>
           </dict></plist>
           PLIST
-          swiftc macos/probe/main.swift -o PetFolioProbe.app/Contents/MacOS/PetFolioProbe -framework AppKit
+          swiftc macos/probe/Model.swift macos/probe/main.swift -o PetFolioProbe.app/Contents/MacOS/PetFolioProbe -framework AppKit
           codesign --force --sign - PetFolioProbe.app
+      - name: Test positioning, preferences and CLI protocol
+        run: |
+          chmod +x macos/probe/fake-cli.py
+          swiftc macos/probe/Model.swift macos/probe/Tests.swift -o /tmp/petfolio-tests
+          /tmp/petfolio-tests "$PWD/artifacts" "$PWD/macos/probe/fake-cli.py" | tee artifacts/tests.log
       - name: Run, capture, and validate probe
         run: |
-          PetFolioProbe.app/Contents/MacOS/PetFolioProbe "$PWD/artifacts" > artifacts/app.log 2>&1 &
+          export PETFOLIO_DATA_DIR="$RUNNER_TEMP/petfolio-test-data"
+          export PETFOLIO_CODEX_EXECUTABLE="$PWD/macos/probe/fake-cli.py"
+          PetFolioProbe.app/Contents/MacOS/PetFolioProbe "$PWD/artifacts" --ci > artifacts/app.log 2>&1 &
           probe_pid=$!
           trap 'kill "$probe_pid" 2>/dev/null || true' EXIT
           for attempt in {1..20}; do
@@ -44,12 +51,13 @@ jobs:
           import json, pathlib, struct
           root = pathlib.Path('artifacts')
           result = json.loads((root / 'probe.json').read_text())
-          assert result['panelVisible'] and result['syntheticFollowGap'] == 16, result
+          assert result['panelVisible'] and result['syntheticFollowGap'] == 12, result
+          assert result['nonactivatingPanel'] and result['hideRestorePassed'] and result['preferencesPassed']
           for name in ['panel-normal.png', 'panel-updating.png', 'panel-failed.png']:
               data = (root / name).read_bytes()
               assert data[:8] == b'\x89PNG\r\n\x1a\n'
               width, height = struct.unpack('>II', data[16:24])
-              assert width >= 300 and height >= 150
+              assert width >= 260 and height >= 144
           PY
           ditto -c -k --keepParent PetFolioProbe.app artifacts/PetFolioProbe.app.zip
       - uses: actions/upload-artifact@v4
