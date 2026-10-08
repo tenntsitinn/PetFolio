@@ -272,6 +272,7 @@ final class Host: NSObject {
             let result: [String: Any] = ["mode": "native-development", "realCodexPetTested": false,
                 "panelVisible": panel.isVisible, "nonactivatingPanel": !panel.canBecomeKey,
                 "hideRestorePassed": true, "preferencesPassed": true, "refreshCoalescingPassed": true,
+                "reduceTransparency": NSWorkspace.shared.accessibilityDisplayShouldReduceTransparency,
                 "syntheticFollowGap": panel.frame.minX - pet.frame.maxX,
                 "screens": NSScreen.screens.map { NSStringFromRect($0.frame) }]
             captureSurfaces(result: result)

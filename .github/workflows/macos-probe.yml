@@ -35,6 +35,9 @@ jobs:
           /tmp/petfolio-tests "$PWD/artifacts" "$PWD/macos/probe/fake-cli.py" | tee artifacts/tests.log
       - name: Run, capture, and validate probe
         run: |
+          # Ephemeral runner: allow native backdrop effects for this visual test.
+          defaults read com.apple.universalaccess reduceTransparency > artifacts/accessibility-before.txt 2>&1 || true
+          defaults write com.apple.universalaccess reduceTransparency -bool false
           export PETFOLIO_DATA_DIR="$RUNNER_TEMP/petfolio-test-data"
           export PETFOLIO_CODEX_EXECUTABLE="$PWD/macos/probe/fake-cli.py"
           PetFolioProbe.app/Contents/MacOS/PetFolioProbe "$PWD/artifacts" --ci > artifacts/app.log 2>&1 &
