@@ -57,7 +57,7 @@ jobs:
               data = (root / name).read_bytes()
               assert data[:8] == b'\x89PNG\r\n\x1a\n'
               width, height = struct.unpack('>II', data[16:24])
-              assert width >= 260 and height >= 144
+              assert width >= 190 and height >= 96
           PY
           ditto -c -k --keepParent PetFolioProbe.app artifacts/PetFolioProbe.app.zip
       - uses: actions/upload-artifact@v4

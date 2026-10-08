@@ -5,7 +5,7 @@ import CoreGraphics
     static func main() throws {
         let root = URL(fileURLWithPath: CommandLine.arguments[1])
         let cli = CommandLine.arguments[2]
-        let screen = CGRect(x: 0, y: 0, width: 1024, height: 768), size = CGSize(width: 260, height: 144)
+        let screen = CGRect(x: 0, y: 0, width: 1024, height: 768), size = CGSize(width: 190, height: 96)
         let pet = CGRect(x: 400, y: 300, width: 80, height: 80)
         for corner in Corner.allCases {
             precondition(Placement.resolve(pet: pet, size: size, preferred: corner, screen: screen) == Placement.frame(pet: pet, size: size, corner: corner))

@@ -6,6 +6,34 @@ final class DisplayLabel: NSTextField {
 final class DisplayEffect: NSVisualEffectView {
     override func hitTest(_ point: NSPoint) -> NSView? { nil }
 }
+// Match QuotaLabel.cs in 1.1.1: 190x96, left inset 24, right edge 166,
+// title at 12, bold rows at 34/54, status at 76. macOS uses logical points.
+final class QuotaTextView: NSView {
+    override var isFlipped: Bool { true }
+    override func hitTest(_ point: NSPoint) -> NSView? { nil }
+    var content: (() -> (String, String))?
+    override func draw(_ dirtyRect: NSRect) {
+        guard let (rows, status) = content?() else { return }
+        let ink = NSColor.labelColor, muted = NSColor.secondaryLabelColor
+        func text(_ value: String, rect: NSRect, font: NSFont, color: NSColor, right: Bool = false) {
+            let paragraph = NSMutableParagraphStyle()
+            paragraph.alignment = right ? .right : .left
+            paragraph.lineBreakMode = .byTruncatingTail
+            (value as NSString).draw(in: rect, withAttributes: [.font: font, .foregroundColor: color, .paragraphStyle: paragraph])
+        }
+        text("Quota remaining", rect: NSRect(x: 24, y: 12, width: 142, height: 18), font: .systemFont(ofSize: 13), color: ink)
+        let amount = NSFont.systemFont(ofSize: 13, weight: .bold)
+        for (index, row) in rows.components(separatedBy: "\n").prefix(2).enumerated() {
+            let pair = row.components(separatedBy: "\t")
+            let value = pair.count > 1 ? pair[1] : ""
+            let width = (value as NSString).size(withAttributes: [.font: amount]).width
+            let y = CGFloat(index == 0 ? 34 : 54)
+            text(pair[0], rect: NSRect(x: 24, y: y, width: 142 - (value.isEmpty ? 0 : width + 12), height: 18), font: amount, color: ink)
+            text(value, rect: NSRect(x: 24, y: y, width: 142, height: 18), font: amount, color: ink, right: true)
+        }
+        text(status, rect: NSRect(x: 24, y: 76, width: 142, height: 16), font: .systemFont(ofSize: 11), color: muted)
+    }
+}
 
 final class BubblePanel: NSPanel {
     override var canBecomeKey: Bool { false }
@@ -19,7 +47,7 @@ final class BubbleView: NSView {
     private var dragged = false
     override func hitTest(_ point: NSPoint) -> NSView? {
         let local = convert(point, from: superview)
-        guard NSBezierPath(roundedRect: bounds, xRadius: 24, yRadius: 24).contains(local) else { return nil }
+        guard NSBezierPath(roundedRect: bounds, xRadius: 32, yRadius: 32).contains(local) else { return nil }
         return super.hitTest(point)
     }
     override func mouseDown(with event: NSEvent) {
@@ -35,7 +63,7 @@ final class BubbleView: NSView {
         guard start != nil else { return }
         start = nil
         if dragged { onPlacement?(NSEvent.mouseLocation) }
-        else if NSBezierPath(roundedRect: bounds, xRadius: 24, yRadius: 24).contains(convert(event.locationInWindow, from: nil)) { onRefresh?() }
+        else if NSBezierPath(roundedRect: bounds, xRadius: 32, yRadius: 32).contains(convert(event.locationInWindow, from: nil)) { onRefresh?() }
     }
 }
 final class Host: NSObject {
@@ -46,13 +74,15 @@ final class Host: NSObject {
     let panel: BubblePanel
     let view: BubbleView
     let effect: NSVisualEffectView
-    let title = DisplayLabel(labelWithString: "Quota Bubble")
-    let quota = DisplayLabel(labelWithString: "No quota yet")
-    let caption = DisplayLabel(labelWithString: "Demo · simulated pet")
+    let textView = QuotaTextView()
+    let quota = DisplayLabel(labelWithString: "Reading quota...")
+    let caption = DisplayLabel(labelWithString: "")
+    let dismissPanel: BubblePanel
     let pet: NSWindow
     let status: NSStatusItem
     var hidden = false, busy = false
     var last: Quota?
+    var lastChecked: Date?
     var queryCount = 0
     var refreshTimer: Timer?
     var followTimer: Timer?
@@ -64,8 +94,9 @@ final class Host: NSObject {
             ?? FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Application Support/PetFolioMacDev")
         preferencesURL = data.appendingPathComponent("appearance.json")
         preferences = Preferences.load(preferencesURL)
-        let frame = NSRect(x: 0, y: 0, width: 260, height: 144)
+        let frame = NSRect(x: 0, y: 0, width: 190, height: 96)
         panel = BubblePanel(contentRect: frame, styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
+        dismissPanel = BubblePanel(contentRect: NSRect(x: 0, y: 0, width: 20, height: 20), styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
         view = BubbleView(frame: frame)
         effect = DisplayEffect(frame: frame)
         pet = NSWindow(contentRect: NSRect(x: 400, y: 300, width: 80, height: 80), styleMask: [.borderless], backing: .buffered, defer: false)
@@ -76,20 +107,22 @@ final class Host: NSObject {
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         panel.hidesOnDeactivate = false; panel.contentView = view
         effect.material = .hudWindow; effect.blendingMode = .behindWindow; effect.state = .active
-        effect.wantsLayer = true; effect.layer?.cornerRadius = 24; effect.layer?.masksToBounds = true
+        effect.wantsLayer = true; effect.layer?.cornerRadius = 32; effect.layer?.masksToBounds = true
         effect.alphaValue = preferences.opacity
         view.addSubview(effect)
-        title.frame = NSRect(x: 20, y: 108, width: 210, height: 22)
-        title.font = .systemFont(ofSize: 15, weight: .semibold)
-        quota.frame = NSRect(x: 20, y: 43, width: 230, height: 54)
-        quota.font = .monospacedDigitSystemFont(ofSize: 20, weight: .medium)
-        caption.frame = NSRect(x: 20, y: 15, width: 225, height: 18)
-        caption.font = .systemFont(ofSize: 11); caption.textColor = .secondaryLabelColor
-        // Text is drawn directly so it does not consume mouse clicks.
-        for label in [title, quota, caption] { view.addSubview(label) }
+        textView.frame = frame
+        textView.content = { [weak self] in (self?.quota.stringValue ?? "", self?.caption.stringValue ?? "") }
+        view.addSubview(textView)
+        dismissPanel.isReleasedWhenClosed = false; dismissPanel.isOpaque = false
+        dismissPanel.backgroundColor = .clear; dismissPanel.hasShadow = false
+        dismissPanel.level = .floating; dismissPanel.hidesOnDeactivate = false
+        panel.addChildWindow(dismissPanel, ordered: .above)
         let close = NSButton(title: "×", target: self, action: #selector(hide))
-        close.isBordered = false; close.frame = NSRect(x: 229, y: 105, width: 26, height: 26)
-        view.addSubview(close)
+        close.isBordered = false; close.frame = NSRect(x: 0, y: 0, width: 20, height: 20)
+        close.wantsLayer = true; close.layer?.cornerRadius = 10
+        close.layer?.backgroundColor = NSColor.windowBackgroundColor.cgColor
+        dismissPanel.contentView = close
+        dismissPanel.orderOut(nil)
         view.onRefresh = { [weak self] in self?.refresh() }
         view.onPlacement = { [weak self] point in
             guard let self else { return }
@@ -122,12 +155,23 @@ final class Host: NSObject {
         status.menu = menu
     }
     func save() { do { try preferences.save(preferencesURL) } catch { caption.stringValue = "Preferences could not be saved" } }
+    func timeText(_ date: Date) -> String {
+        let formatter = DateFormatter(); formatter.dateFormat = "HH:mm"
+        return formatter.string(from: date)
+    }
     func follow() {
-        guard !hidden, pet.isVisible else { panel.orderOut(nil); return }
+        textView.needsDisplay = true
+        guard !hidden, pet.isVisible else { panel.orderOut(nil); dismissPanel.orderOut(nil); return }
         let screen = NSScreen.screens.first { $0.frame.intersects(pet.frame) } ?? NSScreen.main
         guard let screen else { return }
         panel.setFrame(Placement.resolve(pet: pet.frame, size: panel.frame.size, preferred: preferences.corner, screen: screen.visibleFrame), display: true)
         if !panel.isVisible { panel.orderFrontRegardless() }
+        dismissPanel.setFrameOrigin(NSPoint(x: panel.frame.minX - 4, y: panel.frame.maxY - 15))
+        let pointer = NSEvent.mouseLocation
+        let local = NSPoint(x: pointer.x - panel.frame.minX, y: pointer.y - panel.frame.minY)
+        let hover = NSBezierPath(roundedRect: view.bounds, xRadius: 32, yRadius: 32).contains(local)
+            || (dismissPanel.isVisible && dismissPanel.frame.contains(pointer))
+        if hover { dismissPanel.orderFrontRegardless() } else { dismissPanel.orderOut(nil) }
     }
     func start() {
         pet.orderFrontRegardless(); follow(); refresh()
@@ -135,13 +179,13 @@ final class Host: NSObject {
         refreshTimer = Timer.scheduledTimer(withTimeInterval: 300, repeats: true) { [weak self] _ in self?.refresh() }
         if ci { waitForQuota() }
     }
-    @objc func hide() { hidden = true; panel.orderOut(nil) }
+    @objc func hide() { hidden = true; panel.orderOut(nil); dismissPanel.orderOut(nil) }
     @objc func restore() { hidden = false; follow() }
     @objc func setOpacity(_ item: NSMenuItem) { preferences.opacity = Double(item.tag) / 100; effect.alphaValue = preferences.opacity; save() }
     @objc func exitApp() { followTimer?.invalidate(); refreshTimer?.invalidate(); app.terminate(nil) }
     @objc func refresh() {
         guard !busy else { return }; busy = true; queryCount += 1
-        caption.stringValue = "Updating…"
+        caption.stringValue = "Updating..."
         DispatchQueue.global().async { [weak self] in
             guard let self else { return }
             let result: Result<Quota, Error>
@@ -153,15 +197,18 @@ final class Host: NSObject {
                 switch result {
                 case .success(let value):
                     self.last = value
-                    self.quota.stringValue = "5h remaining \(Int(value.primary))%\nWeekly remaining \(Int(value.secondary))%"
-                    self.caption.stringValue = "Demo · simulated pet"
+                    self.lastChecked = Date()
+                    self.quota.stringValue = "5h\t\(Int(value.primary))%\nWeek\t\(Int(value.secondary))%"
+                    self.caption.stringValue = "updated " + self.timeText(self.lastChecked!)
                 case .failure:
-                    self.caption.stringValue = self.last == nil ? "Quota unavailable · click to retry" : "Failed · showing previous quota"
+                    self.caption.stringValue = self.last == nil ? "Quota unavailable" : "Failed · last " + self.timeText(self.lastChecked ?? Date())
+                    if self.last == nil { self.quota.stringValue = "Unable to read CLI quota\nClick to retry" }
                 }
             }
         }
     }
     func snapshot(_ name: String) throws {
+        textView.needsDisplay = true
         view.layoutSubtreeIfNeeded()
         guard let bitmap = view.bitmapImageRepForCachingDisplay(in: view.bounds) else { throw ProbeError.unavailable }
         view.cacheDisplay(in: view.bounds, to: bitmap)
@@ -174,9 +221,9 @@ final class Host: NSObject {
         }
         do {
             precondition(last?.primary == 83 && last?.secondary == 61)
-            try snapshot("panel-normal.png")
-            caption.stringValue = "Updating…"; try snapshot("panel-updating.png")
-            caption.stringValue = "Failed · showing previous quota"; try snapshot("panel-failed.png")
+            caption.stringValue = "updated 17:53"; try snapshot("panel-normal.png")
+            caption.stringValue = "Updating..."; try snapshot("panel-updating.png")
+            caption.stringValue = "Failed · last 17:53"; try snapshot("panel-failed.png")
             for corner in Corner.allCases {
                 preferences.corner = corner; follow(); try snapshot("panel-\(corner.rawValue).png")
             }
@@ -187,7 +234,7 @@ final class Host: NSObject {
             hide(); precondition(!panel.isVisible); restore(); precondition(panel.isVisible)
             pet.orderOut(nil); follow(); precondition(!panel.isVisible)
             pet.orderFrontRegardless(); follow(); precondition(panel.isVisible)
-            caption.stringValue = "Demo · simulated pet"; preferences.opacity = 0.9; effect.alphaValue = 0.9; save()
+            caption.stringValue = "updated 17:53"; preferences.opacity = 0.9; effect.alphaValue = 0.9; save()
             let count = queryCount; refresh(); refresh(); precondition(queryCount == count + 1)
             let result: [String: Any] = ["mode": "native-development", "realCodexPetTested": false,
                 "panelVisible": panel.isVisible, "nonactivatingPanel": !panel.canBecomeKey,

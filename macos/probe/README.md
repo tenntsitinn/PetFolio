@@ -5,6 +5,14 @@ nonactivating quota panel, menu-bar controls, click refresh, drag placement, fou
 preferred corners with screen-edge fallback, hide/restore, background opacity,
 five-minute refresh, and persistent preferences. This is not full macOS support.
 
+The content layout follows Windows 1.1.1's `QuotaLabel.cs`: 190 × 96 logical
+points, 32-point corners, 24-point horizontal insets, a regular 13-point
+`Quota remaining` title, two bold 13-point rows with right-aligned percentages,
+and an 11-point status line. AppKit's system font replaces Segoe UI. The circular
+close button appears on hover outside the upper-left corner. Native materials
+and font rendering still differ from Windows; this is layout parity, not a claim
+of identical glass composition or pet colors.
+
 Quota protocol and process ownership are separate from the UI. Set
 `PETFOLIO_CODEX_EXECUTABLE` to an absolute CLI executable to use stdio quota reads;
 without it, the preview shows synthetic data. CI always uses a fake CLI and tests
