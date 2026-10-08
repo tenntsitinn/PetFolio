@@ -25,6 +25,21 @@ static class StartupTests {
             Check(rejected,"Missing desktop data produces actionable failure");
             rejected=false;try{StartupConfiguration.Resolve(new[]{cli});}catch(ArgumentException){rejected=true;}
             Check(rejected,"Incomplete explicit arguments rejected");
+            var customHome=StartupConfiguration.Resolve(new[]{"--data-directory",home},new[]{cli},new[]{fallback});
+            Check(customHome.Executable==cli && customHome.Home==home,"A desktop shortcut keeps its custom home while discovering the current CLI");
+            var newerCli=Path.Combine(root,"new version","codex.exe");Directory.CreateDirectory(Path.GetDirectoryName(newerCli));File.WriteAllText(newerCli,"");
+            File.Delete(cli);
+            var upgraded=StartupConfiguration.Resolve(new[]{"--data-directory",home},new[]{cli,newerCli},new[]{fallback});
+            Check(upgraded.Executable==newerCli && upgraded.Home==home,"CLI upgrades do not break a shortcut with a custom data directory");
+            var customCli=StartupConfiguration.Resolve(new[]{"--codex-executable",newerCli},new[]{missing},new[]{home});
+            Check(customCli.Executable==newerCli && customCli.Home==home,"CLI-only override discovers desktop data");
+            Check(StartupConfiguration.Resolve(new[]{"--data-directory",home,"--codex-executable",newerCli},new[]{missing},new[]{missing}).Executable==newerCli,"Both named overrides work in either order");
+            rejected=false;try{StartupConfiguration.Resolve(new[]{cli,home},new[]{newerCli},new[]{home});}catch(InvalidOperationException){rejected=true;}
+            Check(rejected,"Explicit stale CLI paths fail rather than silently choosing a different installation");
+            foreach(var invalid in new[]{new[]{"--data-directory"},new[]{"--unknown",home},new[]{"--data-directory",home,"--data-directory",fallback},new[]{"--codex-executable"," "}}) {
+                rejected=false;try{StartupConfiguration.Resolve(invalid,new[]{newerCli},new[]{home});}catch(ArgumentException){rejected=true;}
+                Check(rejected,"Invalid named options produce an actionable usage error");
+            }
             Console.WriteLine("PASS "+checks+" checks");
         }finally {Directory.Delete(root,true);}
     }

@@ -35,7 +35,7 @@ class QuotaLabel : Form {
     readonly List<ToolStripMenuItem> opacityChoices = new List<ToolStripMenuItem>();
     readonly ToolTip refreshTip = new ToolTip();
     internal event Action RefreshRequested;
-    string AppearancePath { get { return Path.Combine(Program.Folder,"appearance.json"); } }
+    string AppearancePath { get { return Path.Combine(Program.DataFolder,"appearance.json"); } }
     string line1 = "Reading quota...", line2 = "", status = "";
     string value1 = "", value2 = "";
     Point lastLabel = new Point(int.MinValue, int.MinValue), lastAnchor;

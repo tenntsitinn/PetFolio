@@ -44,7 +44,10 @@ def find(value,key):
 
 def main():
     parser=argparse.ArgumentParser();parser.add_argument('--asar',required=True,type=Path)
-    parser.add_argument('--home',required=True,type=Path);args=parser.parse_args();entries={}
+    parser.add_argument('--home',required=True,type=Path)
+    default_data=os.environ.get('PETFOLIO_DATA_DIR') or str(Path(os.environ['LOCALAPPDATA'])/'PetFolio')
+    parser.add_argument('--output',type=Path,default=Path(default_data)/'pet-palettes.json')
+    args=parser.parse_args();entries={}
     with args.asar.open('rb') as stream:
         header=struct.unpack('<4I',stream.read(16));index=json.loads(stream.read(header[3]));base=8+header[1]
         assets=index['files']['webview']['files']['assets']['files']
@@ -65,7 +68,10 @@ def main():
             if key in entries and isinstance(child,str):entries[child]=entries[key].copy()
             elif isinstance(child,dict):aliases(child)
     aliases(find(state,'migrated-cloud-pet-ids-v1'))
-    destination=Path(__file__).with_name('pet-palettes.json');temporary=destination.with_suffix('.json.tmp')
+    destination=args.output
+    if not destination.is_absolute():parser.error('--output must be an absolute path')
+    destination.parent.mkdir(parents=True,exist_ok=True)
+    temporary=destination.with_suffix('.json.tmp')
     temporary.write_text(json.dumps(dict(version=1,entries=entries),indent=2),encoding='utf-8');os.replace(temporary,destination)
     for pet,value in entries.items():print(pet, '#%02X%02X%02X'%(value['r'],value['g'],value['b']))
 

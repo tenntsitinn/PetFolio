@@ -8,30 +8,46 @@ sealed class StartupConfiguration {
     public string Executable { get; private set; }
     public string Home { get; private set; }
     public static StartupConfiguration Resolve(string[] args) {
-        if(args.Length!=0 && args.Length!=2)
-            throw new ArgumentException("用法：PetFolio.exe [Codex CLI 路徑] [Codex 資料目錄]");
-        var executables=new List<string>();
-        if(args.Length==2) executables.Add(args[0]);
-        else {
+        return Resolve(args,DiscoverExecutables(),new[]{Environment.GetEnvironmentVariable("CODEX_HOME"),
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),".codex")});
+    }
+    internal static StartupConfiguration Resolve(string[] args,IEnumerable<string> defaults,IEnumerable<string> homes) {
+        string executable=null,home=null;
+        if(args.Length==2 && !args[0].StartsWith("--",StringComparison.Ordinal)) {
+            executable=args[0];home=args[1];
+        }else {
+            for(int i=0;i<args.Length;i+=2) {
+                if(i+1>=args.Length || String.IsNullOrWhiteSpace(args[i+1]))throw Usage();
+                if(args[i]=="--codex-executable" && executable==null)executable=args[i+1];
+                else if(args[i]=="--data-directory" && home==null)home=args[i+1];
+                else throw Usage();
+            }
+        }
+        return FromCandidates(executable==null ? defaults : new[]{executable},home==null ? homes : new[]{home});
+    }
+    static ArgumentException Usage() {
+        return new ArgumentException("用法：PetFolio.exe [Codex CLI 路徑] [Codex 資料目錄]，或使用 --codex-executable 路徑、--data-directory 路徑個別指定。");
+    }
+    static IEnumerable<string> DiscoverExecutables() {
             foreach(var process in Process.GetProcessesByName("codex")) {
+                string candidate=null;
                 using(process) try {
                     var path=process.MainModule.FileName;
-                    if(path.IndexOf("OpenAI\\Codex\\bin\\",StringComparison.OrdinalIgnoreCase)>=0) executables.Add(path);
+                    if(path.IndexOf("OpenAI\\Codex\\bin\\",StringComparison.OrdinalIgnoreCase)>=0) candidate=path;
                 }catch(System.ComponentModel.Win32Exception){}catch(InvalidOperationException){}
+                if(candidate!=null)yield return candidate;
             }
             var root=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"OpenAI","Codex","bin");
             if(Directory.Exists(root)) {
                 var files=Directory.GetFiles(root,"codex.exe",SearchOption.AllDirectories);
                 Array.Sort(files,(a,b)=>File.GetLastWriteTimeUtc(b).CompareTo(File.GetLastWriteTimeUtc(a)));
-                executables.AddRange(files);
+                foreach(var file in files)yield return file;
             }
             foreach(var directory in (Environment.GetEnvironmentVariable("PATH")??"").Split(Path.PathSeparator)) {
-                if(!String.IsNullOrWhiteSpace(directory)) try {executables.Add(Path.Combine(directory.Trim('"'),"codex.exe"));}catch(ArgumentException){}
+                string candidate=null;
+                if(!String.IsNullOrWhiteSpace(directory)) try {candidate=Path.Combine(directory.Trim('"'),"codex.exe");}catch(ArgumentException){}
+                if(candidate!=null)yield return candidate;
             }
-        }
-        var homes=args.Length==2 ? new[]{args[1]} : new[]{Environment.GetEnvironmentVariable("CODEX_HOME"),
-            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),".codex")};
-        return FromCandidates(executables,homes);
     }
     internal static StartupConfiguration FromCandidates(IEnumerable<string> executables,IEnumerable<string> homes) {
         string executable=null,home=null;

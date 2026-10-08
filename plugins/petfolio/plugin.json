@@ -1,0 +1,19 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "petfolio",
+  "version": "1.1.0",
+  "description": "Start, stop, and diagnose the PetFolio Windows desktop companion and its Codex Pet quota bubble.",
+  "keywords": ["codex", "pet", "quota", "windows"],
+  "extensions": {
+    "com.openai": {
+      "onboardingSkill": "./skills/petfolio/SKILL.md",
+      "interface": {
+        "displayName": "PetFolio",
+        "shortDescription": "Quota Bubble for your Codex Pet (Windows)",
+        "longDescription": "Manage a Windows desktop companion that displays CLI account quota beside an existing Codex Pet. Requires Windows x64, .NET Framework 4.8, Codex desktop, and a logged-in Codex CLI. Pet visibility and quota availability are checked during use.",
+        "category": "Productivity",
+        "defaultPrompt": ["Open PetFolio Quota Bubble.", "Check PetFolio status.", "Stop PetFolio."]
+      }
+    }
+  }
+}

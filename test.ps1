@@ -1,3 +1,4 @@
+param([switch]$CheckLocalPalettes)
 $ErrorActionPreference = 'Stop'
 $projectRoot = $PSScriptRoot
 $testRoot = Join-Path $projectRoot '.test-build'
@@ -5,8 +6,13 @@ $compiler = 'C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe'
 $createdDirectory = -not (Test-Path -LiteralPath $testRoot)
 if ($createdDirectory) { New-Item -ItemType Directory -Path $testRoot | Out-Null }
 $generated = @()
+$originalDataDirectory = $env:PETFOLIO_DATA_DIR
+$localDataDirectory = if ($originalDataDirectory) { $originalDataDirectory } else { Join-Path ([Environment]::GetFolderPath('LocalApplicationData')) 'PetFolio' }
+$env:PETFOLIO_DATA_DIR = Join-Path $testRoot 'runtime-data'
 $suites = @(
     @{ Name = 'StartupTests'; Sources = @('StartupTests.cs', 'StartupConfiguration.cs') },
+    @{ Name = 'RuntimeDataTests'; Sources = @('RuntimeDataTests.cs', 'RuntimeData.cs') },
+    @{ Name = 'CompanionSignalsTests'; Sources = @('CompanionSignalsTests.cs', 'CompanionSignals.cs') },
     @{ Name = 'ThemeTests'; Sources = @('ThemeTests.cs', 'PetTheme.cs') },
     @{ Name = 'PetSwitchTests'; Sources = @('PetSwitchTests.cs', 'PetColourSwitch.cs', 'PetTheme.cs') },
     @{ Name = 'PetDragTests'; Sources = @('PetDragTests.cs', 'PetDragFollower.cs') },
@@ -26,8 +32,8 @@ try {
         if ($LASTEXITCODE -ne 0) { throw ('Build failed: ' + $suite.Name) }
         $testArguments = @()
         if ($suite.Name -eq 'QuotaTests') { $testArguments += $fakeServer }
-        $palettePath = Join-Path $projectRoot 'pet-palettes.json'
-        if ($suite.Name -eq 'PetSwitchTests' -and (Test-Path -LiteralPath $palettePath)) {
+        $palettePath = Join-Path $localDataDirectory 'pet-palettes.json'
+        if ($CheckLocalPalettes -and $suite.Name -eq 'PetSwitchTests' -and (Test-Path -LiteralPath $palettePath)) {
             $testArguments += $palettePath
         }
         $result = @(& $executable @testArguments 2>&1)
@@ -43,6 +49,7 @@ try {
         Write-Output ($suiteName + ': ' + $result[-1])
     }
 } finally {
+    $env:PETFOLIO_DATA_DIR = $originalDataDirectory
     foreach ($file in $generated) {
         if (Test-Path -LiteralPath $file) { Remove-Item -LiteralPath $file -Force }
     }

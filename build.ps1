@@ -8,6 +8,8 @@ if (-not (Test-Path -LiteralPath $OutputDirectory)) { New-Item -ItemType Directo
 $sourceNames = @(
     'Program.cs',
     'StartupConfiguration.cs',
+    'RuntimeData.cs',
+    'CompanionSignals.cs',
     'CompanionApplication.cs',
     'ICompanionFeature.cs',
     'QuotaFeature.cs',

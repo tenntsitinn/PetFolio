@@ -21,6 +21,12 @@ jobs:
       - name: Build portable package
         shell: pwsh
         run: ./package.ps1
+      - name: Build plugin package
+        shell: pwsh
+        run: ./package-plugin.ps1
+      - name: Verify plugin payload and controls
+        shell: pwsh
+        run: ./test-plugin.ps1 -SkipCodexInstall
       - name: Publish release
         shell: pwsh
         env:
@@ -28,5 +34,5 @@ jobs:
         run: |
           $version = (Get-Content VERSION -Raw).Trim()
           $title = (Get-Content RELEASE_NOTES.md -First 1) -replace '^#\s*', ''
-          gh release create $version "dist/PetFolio-$version-win-x64.zip" "dist/PetFolio-$version-win-x64.zip.sha256" --verify-tag --title $title --notes-file RELEASE_NOTES.md
+          gh release create $version "dist/PetFolio-$version-win-x64.zip" "dist/PetFolio-$version-win-x64.zip.sha256" "dist/PetFolio-$version-plugin-win-x64.zip" "dist/PetFolio-$version-plugin-win-x64.zip.sha256" --verify-tag --title $title --notes-file RELEASE_NOTES.md
           if ($LASTEXITCODE -ne 0) { throw 'Release upload failed.' }

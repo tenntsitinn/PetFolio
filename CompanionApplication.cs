@@ -24,9 +24,9 @@ sealed class CompanionApplication : ApplicationContext {
         exit=new ToolStripMenuItem("Exit",null,(s,e)=>ExitThread());
         try {
             var handle=dispatcher.Handle;
-            pets=new PetStateService(home,Path.Combine(Program.Folder,"pet-palettes.json"),Dispatch);
+            pets=new PetStateService(home,Path.Combine(Program.DataFolder,"pet-palettes.json"),Dispatch);
             var quota=new QuotaFeature(home,pets,()=>new CodexQuotaSource(executable),Dispatch,
-                snapshot=>File.WriteAllText(Path.Combine(Program.Folder,"quota-snapshot.json"),
+                snapshot=>File.WriteAllText(Path.Combine(Program.DataFolder,"quota-snapshot.json"),
                     new JavaScriptSerializer().Serialize(snapshot.ToRecord())),Program.Record);
             Register(quota);
             pets.Start();quota.Start();RebuildMenu();

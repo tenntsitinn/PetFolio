@@ -8,7 +8,7 @@ PetFolio 讓桌面寵物成為工作時有用的小夥伴。第一個功能 **Qu
 
 可擴充性是專案的基本要求：應用宿主、共用寵物狀態與個別功能已分開，後續功能可以沿用同一套追蹤與生命週期管理。
 
-> 目前是開發中的獨立 Windows 程式，尚未封裝為可安裝的 Codex 插件。應用程式名稱為 PetFolio，Quota Bubble 是其中的額度功能。
+> 提供獨立 Windows 程式及可安裝的本機 Codex 插件封裝。應用程式名稱為 PetFolio，Quota Bubble 是其中的額度功能；插件入口提供啟動、停止與診斷。尚未公開上架。
 
 [快速開始](#快速開始) · [使用方式](#使用方式) · [開發與擴充](#開發與擴充) · [已知限制](#已知限制)
 
@@ -24,6 +24,12 @@ PetFolio 讓桌面寵物成為工作時有用的小夥伴。第一個功能 **Qu
 額度來源是 **CLI 登入帳號**。目前不會檢查它是否與 Codex 桌面端帳號一致，使用多帳號時請自行確認。
 
 ## 快速開始
+
+### Codex 插件（本機測試）
+
+執行 `./package-plugin.ps1` 會產生 Windows 插件 ZIP 及本機 marketplace。使用 `codex plugin marketplace add './dist/petfolio-marketplace'` 註冊來源，再執行 `codex plugin add petfolio@petfolio-local` 安裝。安裝後可在新對話中要求「開啟 PetFolio 額度氣泡」「停止 PetFolio」或「檢查 PetFolio 狀態」。插件不會隨安裝自動啟動。
+
+完整建置、隔離驗證、升級與卸載方式見 [PLUGIN.md](PLUGIN.md)。
 
 ### 環境需求
 
@@ -65,6 +71,10 @@ PetFolio 讓桌面寵物成為工作時有用的小夥伴。第一個功能 **Qu
 日常使用也可雙擊根目錄的 **Open PetFolio.vbs**。它會隱藏命令視窗，並在執行檔不存在時自動建置；需要系統允許執行 VBScript。若已有執行個體，再次啟動會啟用額度功能並恢復氣泡，不會另開一份。修改原始碼後須重新執行 `build.ps1`，啟動器不會自動重建已存在的執行檔。
 
 ### 指定 CLI 與桌面資料目錄
+
+桌面快捷方式應讓 CLI 自動偵測，不要把 `OpenAI\Codex\bin` 下的版本資料夾固定在參數中；Codex 升級後舊路徑可能被移除。可用 `./create-desktop-shortcut.ps1` 建立或更新桌面的 PetFolio 快捷方式；若桌面資料不在預設位置，使用 `./create-desktop-shortcut.ps1 -DataDirectory 'C:\path\to\.codex'`。此腳本只保存資料目錄，CLI 仍會自動偵測。
+
+EXE 也支援個別指定：`PetFolio.exe --data-directory 'C:\path\to\.codex'` 或 `PetFolio.exe --codex-executable 'C:\path\to\codex.exe'`，未指定的部分仍會自動偵測。原有兩個位置參數保持相容；`run.ps1` 與插件管理腳本仍使用成對的路徑參數。
 
 程式優先從正在執行且位於 `OpenAI\Codex\bin` 的 `codex` 程序找出 CLI，其次搜尋 `%LOCALAPPDATA%\OpenAI\Codex\bin`，最後查詢 `PATH`。找不到時，可明確指定路徑。`run.ps1` 也使用同一套程式內的偵測。
 
@@ -112,7 +122,7 @@ PetFolio 讓桌面寵物成為工作時有用的小夥伴。第一個功能 **Qu
 
 PetFolio 讀取 Codex 的寵物設定與視窗狀態，不修改桌面端設定或寵物素材。額度查詢透過 CLI app-server 子程序進行，不會啟動模型任務。拖動追蹤使用滑鼠觀察 hook，不攔截或合成使用者輸入。
 
-以下檔案儲存在程式所在目錄，已列入 [.gitignore](.gitignore)：
+以下檔案預設儲存在 `%LOCALAPPDATA%\PetFolio`。`PETFOLIO_DATA_DIR` 可指定絕對路徑；插件或 EXE 更新不會替換這些資料。首次啟動會從 EXE 所在目錄複製已有的外觀設定與配色快取，目的檔案已存在時不覆寫。舊版位於其他目錄時的遷移方式見 [PLUGIN.md](PLUGIN.md)。這些檔名也列入 [.gitignore](.gitignore)：
 
 | 檔案 | 內容 |
 | --- | --- |
@@ -134,7 +144,7 @@ python -m pip install Pillow numpy
 python .\build-pet-palettes.py --asar 'C:\path\to\resources\app.asar' --home 'C:\path\to\.codex'
 ```
 
-腳本讀取本機安裝包精靈圖、自訂寵物精靈圖及本機保存的雲端遷移對照，產生 `pet-palettes.json`。快取包含源檔路徑、大小與修改時間，不包含圖片本身。客戶端升級、源圖變更或新增寵物後可重新產生；下一次需要解析寵物配色時會重新讀取快取。源檔不匹配的舊快取不會被採用。
+腳本讀取本機安裝包精靈圖、自訂寵物精靈圖及本機保存的雲端遷移對照，在 PetFolio 資料目錄產生 `pet-palettes.json`；也可用 `--output` 指定絕對路徑。快取包含源檔路徑、大小與修改時間，不包含圖片本身。客戶端升級、源圖變更或新增寵物後可重新產生；下一次需要解析寵物配色時會重新讀取快取。源檔不匹配的舊快取不會被採用。
 
 ## 開發與擴充
 
@@ -164,7 +174,7 @@ python .\build-pet-palettes.py --asar 'C:\path\to\resources\app.asar' --home 'C:
 
 腳本在 `.test-build` 建置並執行啟動偵測、配色、寵物切換、拖動跟隨、相對位置、額度模型／服務／stdio 協定、功能生命週期及單擊刷新測試，結束後清理本次產生的測試執行檔。
 
-協定測試使用本機假 CLI，不連接真實帳號或網路。部分測試建立獨立驗證視窗，不操作 Codex 客戶端；診斷紀錄可能留在測試目錄。有本機配色快取時，測試也會核對源圖有效性。
+協定測試使用本機假 CLI，不連接真實帳號或網路。部分測試建立獨立驗證視窗，不操作 Codex 客戶端；診斷紀錄可能留在測試目錄。可額外使用 `./test.ps1 -CheckLocalPalettes` 檢查使用者資料目錄中的配色快取；過期源圖會使此可選檢查失敗。
 
 若程式正在執行，可將建置輸出放到獨立目錄，避免覆蓋正在使用的執行檔：
 
@@ -195,13 +205,15 @@ python .\build-pet-palettes.py --asar 'C:\path\to\resources\app.asar' --home 'C:
 - **帳號尚未對齊驗證**：顯示 CLI 帳號的額度，不保證與桌面端帳號一致，也不是逐次消耗的即時串流。
 - **Windows 相容性待擴大驗證**：玻璃使用內部 host-backdrop 介面，不同 Windows 版本與混合 DPI 多螢幕行為仍需實測。
 - **定位並非原生事件整合**：沒有訂閱 Status Bubble 的內部位置事件，客戶端特殊吸附動畫或布局變更仍可能需要適配。
-- **目前提供免安裝 ZIP**：沒有安裝器、自動更新或開機自啟動；升級時退出舊版再解壓新版，可自行保留本機 `appearance.json`。
+- **Windows 專用封裝**：提供免安裝 ZIP 與本機 Codex 插件；沒有 Windows 安裝器、自動更新或開機自啟動。升級前退出舊版，使用者資料保留於獨立資料目錄。
 
 ### 維護版本與下載包
 
-版本以 `VERSION` 為準，需同步 `Program.cs` 的兩個組件版本及 `app.manifest` 的識別版本。提交描述以三段版本號開頭，初始為 `1.0.0`；未明確指定新 version 時保持首位，較多變更升第二位，較少變更升第三位。
+版本以 `VERSION` 為準，需同步 `Program.cs` 的兩個組件版本、`app.manifest` 的識別版本及 `plugins/petfolio` 下的兩個插件清單版本。提交描述以三段版本號開頭，初始為 `1.0.0`；未明確指定新 version 時保持首位，較多變更升第二位，較少變更升第三位。
 
-執行 `./package.ps1` 可在 `dist` 建立免安裝 ZIP 與 SHA256；包內只包含 EXE、ICO、README 和 VERSION，不帶本機設定、額度資料或配色快取。推送與 VERSION 相同的版本標籤後，GitHub Actions 會先測試，再建置並發布 Release。首次發布說明位於 `RELEASE_NOTES.md`，後續發布應同步更新。
+執行 `./package.ps1` 可在 `dist` 建立免安裝 ZIP 與 SHA256；包內包含 EXE、ICO、README、插件指引、快捷方式腳本和 VERSION，不帶本機設定、額度資料或配色快取。推送與 VERSION 相同的版本標籤後，GitHub Actions 會先測試，再建置並發布 Release。首次發布說明位於 `RELEASE_NOTES.md`，後續發布應同步更新。
+
+`./package-plugin.ps1` 另外建立插件 ZIP、SHA256 與本機 marketplace。`./test-plugin.ps1` 使用隔離資料目錄驗證插件安裝；`-TestLaunch` 會以假 CLI 驗證桌面程式啟停。命令與驗證範圍見 [PLUGIN.md](PLUGIN.md)。
 
 ## 常見問題
 
@@ -235,7 +247,7 @@ PetFolio makes your desktop pet a useful companion while you work. Its first fea
 
 Extensibility is a core requirement. The application host, shared pet state, and individual features have separate responsibilities so future features can reuse pet tracking and lifecycle management.
 
-PetFolio is an independent Windows application under development, rather than an installable Codex plugin. PetFolio is the project name; Quota Bubble is its quota feature.
+PetFolio includes a standalone Windows application and an installable local Codex plugin that starts, stops, and diagnoses the companion. It has not been published to the public plugin directory. PetFolio is the project name; Quota Bubble is its quota feature.
 
 ### Current feature: Quota Bubble
 
@@ -249,6 +261,10 @@ PetFolio is an independent Windows application under development, rather than an
 Quota comes from the **CLI login account**. PetFolio currently does not verify that this account matches the Codex desktop account; check this yourself when using multiple accounts.
 
 ### Getting started
+
+#### Codex plugin (local testing)
+
+Run `./package-plugin.ps1`, register the generated marketplace with `codex plugin marketplace add './dist/petfolio-marketplace'`, then install with `codex plugin add petfolio@petfolio-local`. In a new chat, ask to open, stop, or check PetFolio. Installation does not automatically launch the companion. See [PLUGIN.md](PLUGIN.md) for build, isolated testing, update, and uninstall instructions.
 
 #### Requirements
 
@@ -290,6 +306,10 @@ The build produces `PetFolio.exe`, embedding `assets/PetFolio.ico` for the execu
 You can also double-click **Open PetFolio.vbs**. It hides the command window and builds the application if the executable is missing; this requires VBScript to be enabled. Launching again restores the quota feature and bubble in the existing instance. Rebuild with `build.ps1` after changing source files; the launcher does not rebuild an existing executable automatically.
 
 #### Specify the CLI and desktop data directory
+
+Desktop shortcuts should discover the CLI automatically instead of pinning a versioned directory under `OpenAI\Codex\bin`; Codex upgrades can remove that directory. Use `./create-desktop-shortcut.ps1` to create or update the desktop shortcut, optionally with `-DataDirectory 'C:\path\to\.codex'` to retain a custom desktop data directory without pinning the CLI.
+
+The EXE also accepts independent `--data-directory` and `--codex-executable` options. Any omitted setting is discovered automatically. The original two positional arguments remain supported; `run.ps1` and plugin management scripts still use paired path parameters.
 
 The executable first checks running `codex` processes whose executable paths are inside `OpenAI\Codex\bin`, then searches `%LOCALAPPDATA%\OpenAI\Codex\bin`, and finally checks `PATH`. `run.ps1` uses the same discovery code.
 
@@ -337,7 +357,7 @@ Hidden and disabled states apply only to the current session. The quota feature 
 
 PetFolio reads Codex pet settings and window state without modifying desktop settings or pet assets. Quota queries use a CLI app-server subprocess and do not launch model tasks. Drag tracking uses a mouse observation hook without intercepting or synthesizing user input.
 
-These files are stored beside the executable and excluded by [.gitignore](.gitignore):
+These files are stored in `%LOCALAPPDATA%\PetFolio`, or an absolute directory specified by `PETFOLIO_DATA_DIR`. Application and plugin updates preserve this separate directory. First launch copies preferences and palette metadata from beside the executable if the destination files are absent. See [PLUGIN.md](PLUGIN.md) to migrate an older copy stored elsewhere. The file names are also excluded by [.gitignore](.gitignore):
 
 | File | Contents |
 | --- | --- |
@@ -359,7 +379,7 @@ python -m pip install Pillow numpy
 python .\build-pet-palettes.py --asar 'C:\path\to\resources\app.asar' --home 'C:\path\to\.codex'
 ```
 
-The script reads built-in and custom sprite images and locally stored cloud migration mappings to create `pet-palettes.json`. The cache contains source paths, sizes, and modification times, rather than images. Regenerate it after client updates, source-image changes, or adding pets. It is reread when palette resolution is needed; entries with mismatched source metadata are not used.
+The script reads built-in and custom sprite images and locally stored cloud migration mappings to create `pet-palettes.json` in the PetFolio data directory. Use `--output` for another absolute destination. The cache contains source paths, sizes, and modification times, rather than images. Regenerate it after client updates, source-image changes, or adding pets. It is reread when palette resolution is needed; entries with mismatched source metadata are not used.
 
 ### Development and extensibility
 
@@ -390,7 +410,7 @@ Run from the project root:
 
 The script builds and runs startup discovery, colors, pet switching, drag following, placement, quota model/service/stdio protocol, feature lifecycle, and click-refresh tests in `.test-build`, then removes the generated test executables.
 
-Protocol tests use a local fake CLI without real accounts or network access. Some tests create independent verification windows; they do not operate the Codex client. Diagnostic logs may remain in the test directory. If a local palette cache is present, tests also verify its source-image metadata.
+Protocol tests use a local fake CLI without real accounts or network access. Some tests create independent verification windows; they do not operate the Codex client. Diagnostic logs may remain in the test directory. Use `./test.ps1 -CheckLocalPalettes` to additionally validate source metadata in the user data palette cache; stale sources fail this optional check.
 
 To avoid overwriting a running executable, use a separate build directory:
 
@@ -421,13 +441,15 @@ The quota panel is currently 190 × 96 px with 32 px rounded corners and a 12 px
 - **Account matching:** The displayed quota belongs to the CLI account and may differ from the desktop account. It is not a real-time stream of individual usage events.
 - **Windows compatibility:** Glass uses an internal host-backdrop interface. More Windows versions and mixed-DPI multi-monitor setups need testing.
 - **Positioning:** PetFolio does not subscribe to native Status Bubble position events. Special snapping animations or layout changes may require adaptation.
-- **Portable ZIP only:** There is no installer, automatic updater, or automatic startup integration. Exit the old version before extracting an update; retain your local `appearance.json` if desired.
+- **Windows packages:** Portable ZIP and local Codex plugin packages are available. There is no Windows installer, automatic updater, or automatic startup integration. Exit before updating; the separate user data directory is preserved.
 
 #### Maintaining versions and releases
 
-`VERSION` is the version source. Keep both assembly versions in `Program.cs` and the identity version in `app.manifest` synchronized. Commit descriptions begin with a three-part version, starting at `1.0.0`. Unless a new major version is explicitly requested, retain the first component; increment the second for larger changes or the third for smaller ones.
+`VERSION` is the version source. Keep both assembly versions in `Program.cs`, the identity version in `app.manifest`, and both manifests under `plugins/petfolio` synchronized. Commit descriptions begin with a three-part version, starting at `1.0.0`. Unless a new major version is explicitly requested, retain the first component; increment the second for larger changes or the third for smaller ones.
 
-Run `./package.ps1` to create the portable ZIP and SHA256 file in `dist`. The archive contains only the EXE, ICO, README, and VERSION, without local settings, quota data, or palette caches. Pushing a version tag matching `VERSION` runs GitHub Actions tests, builds the package, and publishes a Release. Update `RELEASE_NOTES.md` for subsequent releases.
+Run `./package.ps1` to create the portable ZIP and SHA256 file in `dist`. The archive contains the EXE, ICO, README, plugin guide, shortcut script, and VERSION, without local settings, quota data, or palette caches. Pushing a version tag matching `VERSION` runs GitHub Actions tests, builds the package, and publishes a Release. Update `RELEASE_NOTES.md` for subsequent releases.
+
+Run `./package-plugin.ps1` for the plugin ZIP, checksum, and local marketplace. `./test-plugin.ps1` verifies installation with isolated Codex data; `-TestLaunch` also exercises companion startup and shutdown using a fake CLI. See [PLUGIN.md](PLUGIN.md) for scope and commands.
 
 ### Troubleshooting
 

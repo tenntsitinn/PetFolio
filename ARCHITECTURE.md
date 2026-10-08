@@ -69,3 +69,11 @@ flowchart TD
 `build-glass-verification.ps1` 与 `GlassVerification.exe` 验证真实 Windows 玻璃、鼠标命中、关闭／恢复和背景更新。支持 `-OutputDirectory .test-build` 在隔离目录生成程序与截图。
 
 单独验证生产构建可执行 `./build.ps1 -OutputDirectory .test-build`，无需覆盖正在运行的程序。
+
+## Codex 插件封装
+
+`plugins/petfolio` 提供根目录插件清单、旧版兼容清单、操作 skill 与管理脚本。`package-plugin.ps1` 将它们和预编译 Windows x64 程序打包，并生成独立本机 marketplace。脚本通过 `--status`、`--check` 和 `--stop` 管理进程；启动时等待初始化完成的会话信号，重复启动恢复现有实例。安装本身不会启动程序。
+
+`RuntimeData` 统一解析 `%LOCALAPPDATA%\PetFolio` 或绝对 `PETFOLIO_DATA_DIR`，并从程序目录迁移旧偏好与配色元数据。插件缓存只有程序与资源；用户资料不随插件更新或卸载删除。`Program.Folder` 仍用于独立视觉验证产物，业务设置及缓存使用 `Program.DataFolder`。
+
+`test-plugin.ps1` 验证 Windows PowerShell 5.1、中文与空格路径、缓存搬迁，以及隔离 Codex 安装／卸载。可选 `-TestLaunch` 使用假 CLI 验证实际宿主启停。当前没有 MCP 控制界面或生命周期 hooks；客户端内部宠物跟踪仍需现场兼容性测试。

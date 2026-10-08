@@ -14,6 +14,8 @@ $payload = Join-Path $stage 'PetFolio'
 New-Item -ItemType Directory -Path $payload -Force | Out-Null
 & (Join-Path $PSScriptRoot 'build.ps1') -OutputDirectory $payload
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'README.md') -Destination $payload
+Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'PLUGIN.md') -Destination $payload
+Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'create-desktop-shortcut.ps1') -Destination $payload
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'VERSION') -Destination $payload
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'assets\PetFolio.ico') -Destination $payload
 $zip = Join-Path $OutputDirectory "PetFolio-$version-win-x64.zip"
