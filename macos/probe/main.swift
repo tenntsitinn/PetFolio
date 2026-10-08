@@ -216,10 +216,8 @@ final class Host: NSObject {
             let directory = preferencesURL.deletingLastPathComponent().appendingPathComponent("demo-pets")
             try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
             for (index, color) in demoColors.enumerated() {
-                let bitmap = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: 48, pixelsHigh: 48, bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true, isPlanar: false, colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0)!
-                for y in 0..<48 { for x in 0..<48 { bitmap.setColor(x >= 4 && x < 44 && y >= 4 && y < 44 ? color.color : .clear, atX: x, y: y) } }
                 let url = directory.appendingPathComponent("\(index).png")
-                try bitmap.representation(using: .png, properties: [:])!.write(to: url); demoImages.append(url)
+                try PetPalette.writeDemo(color, to: url); demoImages.append(url)
             }
             selectedImage = ProcessInfo.processInfo.environment["PETFOLIO_PET_SPRITE"].map { URL(fileURLWithPath: $0) } ?? demoImages.first
             updatePalette()

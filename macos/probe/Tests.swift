@@ -46,6 +46,12 @@ import CoreGraphics
             precondition(value.contrast(value.text) >= 4.5)
             precondition(value.contrast(value.secondary) >= 4.5)
         }
+        for (index, color) in [orange, blue, purple, PetRGB(r: 235, g: 235, b: 235)].enumerated() {
+            let image = root.appendingPathComponent("palette-test-\(index).png")
+            try PetPalette.writeDemo(color, to: image)
+            guard let actual = PetPalette.read(image) else { preconditionFailure("PNG sampling unavailable") }
+            precondition(abs(actual.r - color.r) + abs(actual.g - color.g) + abs(actual.b - color.b) <= 6)
+        }
         var events: [PetRGB] = []
         let source = PetPaletteSource(reader: { url in
             if url.lastPathComponent == "A-old" { Thread.sleep(forTimeInterval: 0.25); return orange }

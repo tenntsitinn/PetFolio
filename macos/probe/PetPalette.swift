@@ -1,4 +1,5 @@
 import AppKit
+import ImageIO
 
 struct PetRGB: Equatable {
     let r: Double, g: Double, b: Double
@@ -49,7 +50,7 @@ enum PetPalette {
         return PetRGB(r: floor(neutral[0] / Double(neutralCount)), g: floor(neutral[1] / Double(neutralCount)), b: floor(neutral[2] / Double(neutralCount)))
     }
     static func read(_ url: URL) -> PetRGB? {
-        guard let image = NSImage(contentsOf: url), let cg = image.cgImage(forProposedRect: nil, context: nil, hints: nil) else { return nil }
+        guard let image = CGImageSourceCreateWithURL(url as CFURL, nil), let cg = CGImageSourceCreateImageAtIndex(image, 0, nil) else { return nil }
         // Bound sampling cost independently of sprite-sheet dimensions.
         let width = min(256, cg.width), height = min(256, cg.height)
         var bytes = [UInt8](repeating: 0, count: width * height * 4)
@@ -59,6 +60,20 @@ enum PetPalette {
             context.draw(cg, in: CGRect(x: 0, y: 0, width: width, height: height)); return true
         }
         return rendered ? dominant(rgba: bytes, width: width, height: height) : nil
+    }
+    static func writeDemo(_ color: PetRGB, to url: URL) throws {
+        var bytes = [UInt8](repeating: 0, count: 48 * 48 * 4)
+        for y in 4..<44 { for x in 4..<44 {
+            let i = (y * 48 + x) * 4
+            bytes[i] = UInt8(color.r); bytes[i + 1] = UInt8(color.g); bytes[i + 2] = UInt8(color.b); bytes[i + 3] = 255
+        } }
+        let data: Data? = bytes.withUnsafeMutableBytes { buffer in
+            guard let context = CGContext(data: buffer.baseAddress, width: 48, height: 48, bitsPerComponent: 8, bytesPerRow: 48 * 4,
+                space: CGColorSpace(name: CGColorSpace.sRGB)!, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue), let image = context.makeImage() else { return nil }
+            return NSBitmapImageRep(cgImage: image).representation(using: .png, properties: [:])
+        }
+        guard let data else { throw ProbeError.unavailable }
+        try data.write(to: url)
     }
 }
 
