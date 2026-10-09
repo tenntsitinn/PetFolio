@@ -144,7 +144,7 @@ Windows 若停用了此登入啟動項，需在系統的啟動應用設定重新
 
 隱藏及功能停用狀態僅限目前執行階段，重新啟動預設顯示並啟用額度功能；背景不透明度與偏好方位則會保留。
 
-標題與額度文字使用 Alpha=1，更新時間使用相同 RGB、Alpha 約 0.9（230/255），以透明度呈現層次。背景色辨識僅在啟動後首次額度查詢、每次實際自動或手動額度查詢，以及套用新透明度時進行。氣泡隱藏時跳過取樣；移動、寵物配色更新與一般重繪使用上次結果。取樣避開文字區域，以氣泡空白邊緣估計背景，只在記憶體處理，不保存畫面。深色氣泡主色且不透明度為 10% 或 20% 時，根據背景對比直接選擇黑字或白字，不加文字描邊；取樣失敗保留上次結果，尚無結果時沿用主色配字。
+標題與額度文字使用 Alpha=1，更新時間使用相同 RGB、Alpha 約 0.9（230/255），以透明度呈現層次。背景色辨識僅在啟動後首次額度查詢、每次實際自動或手動額度查詢，以及套用新透明度時進行。氣泡隱藏時跳過取樣；移動、寵物配色更新與一般重繪使用上次結果。取樣避開文字區域，以氣泡空白邊緣估計背景，只在記憶體處理，不保存畫面。氣泡背景不透明度為 10% 或 20% 時，不論主色深淺，都根據背景對比直接選擇黑字或白字，不加文字描邊；取樣失敗保留上次結果，尚無結果時沿用主色配字。
 
 ## 本機資料與設定
 
@@ -409,7 +409,7 @@ During a query, the bubble displays `Updating...`. Successful queries show the u
 
 Hidden and disabled states apply only to the current session. The quota feature is enabled and the bubble shown by default after restarting. Background opacity and preferred placement are retained.
 
-Title and quota text use alpha 1; the update time uses the same RGB with alpha approximately 0.9 (230/255) for visual depth. Background sampling occurs only with the first quota query after startup, each accepted automatic or manual quota query, and applying a new opacity setting. Hidden bubbles skip sampling; movement, pet color updates, and ordinary repaint reuse the cached result. Blank bubble margins estimate the background without sampling text. Captures remain in memory and are not saved. Dark pet colors at 10% or 20% opacity use plain black or white text according to background contrast, without a text outline. Failed captures retain the previous result; without a result, the original pet-based text colour is used.
+Title and quota text use alpha 1; the update time uses the same RGB with alpha approximately 0.9 (230/255) for visual depth. Background sampling occurs only with the first quota query after startup, each accepted automatic or manual quota query, and applying a new opacity setting. Hidden bubbles skip sampling; movement, pet color updates, and ordinary repaint reuse the cached result. Blank bubble margins estimate the background without sampling text. Captures remain in memory and are not saved. Both light and dark pet colors at 10% or 20% opacity use plain black or white text according to background contrast, without a text outline. Failed captures retain the previous result; without a result, the original pet-based text colour is used.
 
 ### Local data and settings
 

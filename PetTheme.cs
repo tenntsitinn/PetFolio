@@ -53,11 +53,11 @@ static class PetTheme {
     public static double RenderedContrast(Color surface,Color ink) {
         return Contrast(surface,Mix(surface,ink,ink.A/255.0));
     }
-    // At 10% / 20%, dark pet colours can become a light surface over the
-    // desktop. Choose plain ink from the cached composite, without extra draws.
+    // At 10% / 20%, the desktop can reverse the tint's apparent brightness.
+    // Choose plain ink from the cached composite for both light and dark pets.
     public static Color Text(Color background,Color? desktop) {
         var original=Text(background);
-        if((background.A!=26 && background.A!=51) || original.ToArgb()!=Color.White.ToArgb() || !desktop.HasValue)return original;
+        if((background.A!=26 && background.A!=51) || !desktop.HasValue)return original;
         var surface=Mix(desktop.Value,background,background.A/255.0);
         // Select the shared RGB using the softer status text; the primary ink
         // is opaque and therefore has at least the same contrast.
