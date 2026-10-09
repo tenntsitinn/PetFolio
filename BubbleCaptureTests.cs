@@ -13,8 +13,8 @@ class BubbleCaptureTests {
    scene.FormBorderStyle=FormBorderStyle.None;scene.ShowInTaskbar=false;scene.TopMost=true;
    scene.StartPosition=FormStartPosition.Manual;scene.Location=new Point(area.Left+40,area.Top+40);
    scene.ClientSize=new Size(260,160);scene.Show();Application.DoEvents();
-   foreach(int percent in new[]{10,20})foreach(Color desktop in new[]{Color.White,Color.Black}) {
-    var tint=Color.FromArgb((int)Math.Round(255*percent/100.0),35,30,48);
+   foreach(Color source in new[]{Color.FromArgb(35,30,48),Color.FromArgb(240,220,100)})foreach(int percent in new[]{10,20})foreach(Color desktop in new[]{Color.White,Color.Black}) {
+    var tint=Color.FromArgb((int)Math.Round(255*percent/100.0),source);
     scene.BackColor=PetTheme.Mix(desktop,tint,tint.A/255.0);scene.Refresh();Application.DoEvents();
     var captured=BubbleBackdrop.Capture(new Rectangle(scene.Left+20,scene.Top+20,190,96),tint);
     if(!captured.HasValue || PetTheme.Distance(captured.Value,desktop)>12)throw new Exception("Real screen capture failed: "+percent+" / "+desktop);

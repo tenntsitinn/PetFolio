@@ -16,8 +16,12 @@ class ThemeTests {
    Require((PetTheme.Text(Color.FromArgb(alpha,35,30,48),Color.White).ToArgb()==Color.Black.ToArgb())==(percent==10 || percent==20),"Dark tint switches to black only at 10% and 20%: "+percent);
    Require(PetTheme.Text(Color.FromArgb(alpha,35,30,48),Color.Black).ToArgb()==Color.White.ToArgb(),"Dark desktop retains white text: "+percent);
    Require(PetTheme.Text(Color.FromArgb(alpha,240,220,100),Color.White).ToArgb()==PetTheme.Text(Color.FromArgb(alpha,240,220,100)).ToArgb(),"Light tint keeps existing text: "+percent);
+   Require((PetTheme.Text(Color.FromArgb(alpha,240,220,100),Color.Black).ToArgb()==Color.White.ToArgb())==(percent==10 || percent==20),"Light tint switches to white on dark desktop only at 10% and 20%: "+percent);
+   Require(PetTheme.Secondary(Color.FromArgb(alpha,240,220,100),Color.Black).A==230,"Light tint secondary ink retains .9 alpha: "+percent);
   }
   Require(PetTheme.Text(translucentDark,null).ToArgb()==Color.White.ToArgb(),"Unknown desktop retains the original colour");
+  Require(PetTheme.Text(Color.FromArgb(51,240,220,100),null).ToArgb()==Color.Black.ToArgb(),"Unknown desktop retains original light-tint text");
+  Require(PetTheme.Secondary(Color.FromArgb(51,240,220,100),Color.Black).ToArgb()==Color.FromArgb(230,Color.White).ToArgb(),"Updated time uses white at .9 alpha for light tint on dark desktop");
   Require(PetTheme.Secondary(translucentDark,Color.White).ToArgb()==Color.FromArgb(230,Color.Black).ToArgb(),"Updated time uses black at .9 alpha on light desktop");
   foreach(Color desktop in new[]{Color.White,Color.Black,Color.FromArgb(150,150,150)}) {
    var surface=PetTheme.Mix(desktop,translucentDark,translucentDark.A/255.0);
