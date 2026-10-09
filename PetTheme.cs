@@ -48,8 +48,23 @@ static class PetTheme {
     // A subtle hairline uses the text RGB, independently of the glass opacity.
     public static Color Outline(Color background) {return Color.FromArgb(60,Text(background));}
     public static Color Secondary(Color background) {
-        Color main=Text(background),soft=Mix(background,main,.75);
-        return Contrast(background,soft)>=4.5?soft:main;
+        return Color.FromArgb(230,Text(background));
+    }
+    public static double RenderedContrast(Color surface,Color ink) {
+        return Contrast(surface,Mix(surface,ink,ink.A/255.0));
+    }
+    // At 10% / 20%, dark pet colours can become a light surface over the
+    // desktop. Choose plain ink from the cached composite, without extra draws.
+    public static Color Text(Color background,Color? desktop) {
+        var original=Text(background);
+        if((background.A!=26 && background.A!=51) || original.ToArgb()!=Color.White.ToArgb() || !desktop.HasValue)return original;
+        var surface=Mix(desktop.Value,background,background.A/255.0);
+        // Select the shared RGB using the softer status text; the primary ink
+        // is opaque and therefore has at least the same contrast.
+        return RenderedContrast(surface,Color.FromArgb(230,Color.Black))>=RenderedContrast(surface,Color.FromArgb(230,Color.White))?Color.Black:Color.White;
+    }
+    public static Color Secondary(Color background,Color? desktop) {
+        return Color.FromArgb(230,Text(background,desktop));
     }
     public static int Distance(Color a,Color b) {return Math.Abs(a.R-b.R)+Math.Abs(a.G-b.G)+Math.Abs(a.B-b.B);}
 }

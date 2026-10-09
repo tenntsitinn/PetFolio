@@ -21,6 +21,7 @@ $sourceNames = @(
     'PetStateService.cs',
     'Native.cs',
     'PetTheme.cs',
+    'BubbleBackdrop.cs',
     'PetColourSwitch.cs',
     'PetDragFollower.cs',
     'PetPanelPlacement.cs',
