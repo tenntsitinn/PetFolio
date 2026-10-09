@@ -19,7 +19,7 @@ $binaryDirectory = Join-Path $payload 'bin\win-x64'
 New-Item -ItemType Directory -Path $binaryDirectory -Force | Out-Null
 # Explicit payload list excludes machine-specific state and any source-tree binaries.
 $files = @('plugin.json', '.codex-plugin\plugin.json', 'skills\petfolio\SKILL.md',
-    'scripts\common.ps1', 'scripts\start.ps1', 'scripts\stop.ps1', 'scripts\status.ps1', 'README.md')
+    'scripts\common.ps1', 'scripts\start.ps1', 'scripts\stop.ps1', 'scripts\status.ps1', 'README.md', 'assets\icon.png')
 foreach ($relative in $files) {
     $target = Join-Path $payload $relative
     New-Item -ItemType Directory -Path (Split-Path -Parent $target) -Force | Out-Null

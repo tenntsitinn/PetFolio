@@ -1,17 +1,22 @@
-# 1.1.1 補齊插件快速開始與原始碼版本說明
+# PetFolio for Windows 1.2.0
 
-- 補齊 README 中英文插件建置與安裝步驟，說明自訂 `CODEX_HOME` 及保留 marketplace 來源目錄。
-- 修正使用者資料目錄需求，區分原始碼更新與已發佈的 Release。執行功能沿用 1.1.0。
+Windows 正式版：新增可選的 Codex 自動啟動功能。
 
-## 沿用的功能
+## 新功能
 
-- 提供 Windows x64 可攜版及 Codex 本機插件包；插件透過 skill 與 PowerShell 管理啟動、恢復、停止及環境檢查。
-- 外觀偏好與配色快取移至 `%LOCALAPPDATA%\PetFolio`，首次啟動遷移程式旁的舊資料；插件更新或卸載保留偏好。
-- 桌面捷徑可只指定 Codex 資料目錄，自動尋找更新後的 CLI，避免綁死舊版本路徑。
-- Quota Bubble 跟隨寵物，支援手動刷新、配色、透明度與位置調整。
-- 增加資料遷移、單實例控制、背景啟動及插件安裝／卸載驗證。
-- 新增 `PLUGIN.md` 安裝與驗證說明；目前仍只支援 Windows，尚無 MCP 控制介面。
+- 在托盤選單勾選 **Start when Codex opens**，即可讓 PetFolio 隨 Codex 桌面端開啟而啟動；預設關閉，安裝插件不會自行啟用。
+- 啟用後，Codex 關閉時 PetFolio 會退出；登入時啟動的輕量監看器會等待下一次開啟 Codex。
+- 手動退出 PetFolio 或使用插件停止後，本次 Codex 工作階段不會立即重新拉起；重新開啟 Codex 後才會恢復。
+- 監看器使用獨立程式副本，避免插件快取路徑變動使自動啟動失效。取消勾選即可移除登入啟動項。
+- 插件下載包附帶 PetFolio 圖示。
 
-正式發佈時可攜版檔名為 `PetFolio-1.1.1-win-x64.zip`，插件包為 `PetFolio-1.1.1-plugin-win-x64.zip`。原始碼提交不會自動建立下載包；可執行 `package.ps1` 或 `package-plugin.ps1` 自行建置。
-需要 Windows x64、.NET Framework 4.8、Codex 桌面端、可見的 Pet 與已登入的 Codex CLI。
-可用 `.sha256` 檔核對下載完整性；目前執行檔沒有數位簽章。
+## 下載與使用
+
+- **一般桌面使用**：下載 `PetFolio-1.2.0-win-x64.zip`，解壓縮後執行 `PetFolio.exe`。
+- **Codex 插件使用**：下載 `PetFolio-1.2.0-plugin-win-x64.zip`，依包內 README 安裝。
+- 更新前先退出舊版；使用者資料保留。若已啟用自動啟動，更新後取消再重新勾選一次，以更新監看器副本。
+- 卸載前請取消自動啟動選項，否則獨立監看器副本仍會運作。
+
+需要 Windows x64、.NET Framework 4.8、Codex 桌面端與已登入的 Codex CLI；額度氣泡需要顯示 Codex Pet。自動啟動辨識目前的 Codex 桌面程序，不會將 CLI 額度查詢程序視為 Codex。
+
+本次只發布 Windows 下載包；macOS native 仍在實驗階段，未包含在此 Release。執行檔目前沒有數位簽章，可使用附帶的 `.sha256` 檔核對下載完整性。
