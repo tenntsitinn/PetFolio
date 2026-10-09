@@ -16,6 +16,7 @@ codex-autostart-suppressed.txt
 # Generated diagnostic captures and client excerpts
 *.png
 !design/*.png
+!plugins/petfolio/assets/icon.png
 native-*.js
 
 # Release builds and local design experiments
