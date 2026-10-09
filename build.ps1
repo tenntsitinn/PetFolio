@@ -10,6 +10,7 @@ $sourceNames = @(
     'StartupConfiguration.cs',
     'RuntimeData.cs',
     'CompanionSignals.cs',
+    'CodexAutoStart.cs',
     'CompanionApplication.cs',
     'ICompanionFeature.cs',
     'QuotaFeature.cs',

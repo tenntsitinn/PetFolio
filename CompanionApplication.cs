@@ -16,12 +16,21 @@ sealed class CompanionApplication : ApplicationContext {
     readonly Dictionary<ICompanionFeature, ToolStripMenuItem> toggles = new Dictionary<ICompanionFeature, ToolStripMenuItem>();
     readonly ToolStripMenuItem featureMenu = new ToolStripMenuItem("Features");
     readonly ToolStripMenuItem exit;
+    readonly ToolStripMenuItem autoStart = new ToolStripMenuItem("Start when Codex opens");
     readonly ToolStripSeparator separator = new ToolStripSeparator();
     PetStateService pets;
     Icon applicationIcon;
     volatile bool disposed;
     public CompanionApplication(string executable,string home,EventWaitHandle stop,EventWaitHandle show) {
-        exit=new ToolStripMenuItem("Exit",null,(s,e)=>ExitThread());
+        exit=new ToolStripMenuItem("Exit",null,(s,e)=>{CodexAutoStart.Suppress(Program.DataFolder);ExitThread();});
+        autoStart.Checked=CodexAutoStart.Enabled(Program.DataFolder);
+        autoStart.Click+=(s,e)=> {
+            try {
+                if(autoStart.Checked)CodexAutoStart.Disable(Program.DataFolder);
+                else CodexAutoStart.Enable(Program.DataFolder,home,System.Reflection.Assembly.GetExecutingAssembly().Location);
+                autoStart.Checked=CodexAutoStart.Enabled(Program.DataFolder);
+            }catch(Exception ex){MessageBox.Show(ex.Message,"PetFolio 自動啟動設定失敗",MessageBoxButtons.OK,MessageBoxIcon.Error);}
+        };
         try {
             var handle=dispatcher.Handle;
             pets=new PetStateService(home,Path.Combine(Program.DataFolder,"pet-palettes.json"),Dispatch);
@@ -38,6 +47,13 @@ sealed class CompanionApplication : ApplicationContext {
             signals.Tick+=(s,e)=> {
                 if(stop.WaitOne(0)){ExitThread();return;}
                 if(show.WaitOne(0)){quota.Restore();RebuildMenu();}
+            };
+            var desktopTicks=0;
+            signals.Tick+=(s,e)=> {
+                if(disposed)return;
+                if(++desktopTicks<20)return;desktopTicks=0;
+                // Close the companion after Codex exits; only the watcher remains.
+                if(autoStart.Checked && CodexDesktopSession.Current().Length==0)ExitThread();
             };
             signals.Start();
             Program.Record("started",new {pollSeconds=300,anchorPollMilliseconds=100,dragTickMilliseconds=16,accountSource="Codex CLI login"});
@@ -68,7 +84,7 @@ sealed class CompanionApplication : ApplicationContext {
             toggles[feature].Checked=feature.IsRunning;
             if(feature.IsRunning)menu.Items.AddRange(feature.Commands);
         }
-        menu.Items.Add(separator);menu.Items.Add(featureMenu);menu.Items.Add(exit);
+        menu.Items.Add(separator);menu.Items.Add(featureMenu);menu.Items.Add(autoStart);menu.Items.Add(exit);
     }
     void Release() {
         if(disposed)return;disposed=true;
@@ -77,7 +93,7 @@ sealed class CompanionApplication : ApplicationContext {
         if(pets!=null)pets.Dispose();
         tray.Visible=false;tray.Dispose();menu.Dispose();
         if(applicationIcon!=null)applicationIcon.Dispose();
-        featureMenu.Dispose();separator.Dispose();exit.Dispose();dispatcher.Dispose();
+        featureMenu.Dispose();separator.Dispose();autoStart.Dispose();exit.Dispose();dispatcher.Dispose();
         Program.Record("stopped",new { });
     }
     protected override void ExitThreadCore() {Release();base.ExitThreadCore();}

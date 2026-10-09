@@ -10,6 +10,8 @@ pet-palettes.json
 pet-palettes.json.tmp
 probe-events.jsonl
 quota-snapshot.json
+codex-autostart.json
+codex-autostart-suppressed.txt
 
 # Generated diagnostic captures and client excerpts
 *.png

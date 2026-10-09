@@ -31,6 +31,11 @@ static class Program {
         // WinExe may have redirected pipes but no console handle. Setting
         // OutputEncoding calls SetConsoleOutputCP and fails in that case.
         Console.SetOut(new StreamWriter(Console.OpenStandardOutput(),new UTF8Encoding(false)){AutoFlush=true});
+        if(args.Length==2 && args[0]=="--watch-codex") {
+            try {CodexAutoStart.Watch(Path.GetFullPath(args[1]));}
+            catch(Exception){Environment.ExitCode=1;}
+            return;
+        }
         if(args.Length>0 && (args[0]=="--status" || args[0]=="--check")) {
             try {
                 if(args[0]=="--status") {
@@ -50,7 +55,7 @@ static class Program {
             }
             return;
         }
-        if(args.Length==1 && args[0]=="--stop") {CompanionSignals.Stop();return;}
+        if(args.Length==1 && args[0]=="--stop") {CodexAutoStart.Suppress(DataFolder);CompanionSignals.Stop();return;}
         bool background=Array.IndexOf(args,"--background")>=0;
         if(background)args=new List<string>(args).FindAll(arg=>arg!="--background").ToArray();
         string startupResult=null;

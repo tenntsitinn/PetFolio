@@ -44,7 +44,7 @@ codex plugin remove petfolio@petfolio-local
 codex plugin marketplace remove petfolio-local
 ```
 
-插件卸載保留使用者資料，也不會自動終止已啟動的桌面程式。沒有開機自啟動或安裝後自動啟動。
+插件卸載保留使用者資料，也不會自動終止已啟動的桌面程式。安裝插件不會自動啟動程式或註冊開機啟動；使用者可在 Windows 托盤選單勾選「Start when Codex opens」。卸載插件前請先取消該選項，否則資料目錄內的獨立監看器副本仍會運作。詳細行為見 README 的自動啟動說明。
 
 ## 驗證範圍
 
