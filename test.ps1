@@ -13,6 +13,7 @@ $suites = @(
     @{ Name = 'StartupTests'; Sources = @('StartupTests.cs', 'StartupConfiguration.cs') },
     @{ Name = 'RuntimeDataTests'; Sources = @('RuntimeDataTests.cs', 'RuntimeData.cs') },
     @{ Name = 'CompanionSignalsTests'; Sources = @('CompanionSignalsTests.cs', 'CompanionSignals.cs') },
+    @{ Name = 'CodexAutoStartTests'; Sources = @('CodexAutoStartTests.cs', 'CodexAutoStart.cs', 'CompanionSignals.cs') },
     @{ Name = 'ThemeTests'; Sources = @('ThemeTests.cs', 'PetTheme.cs') },
     @{ Name = 'PetSwitchTests'; Sources = @('PetSwitchTests.cs', 'PetColourSwitch.cs', 'PetTheme.cs') },
     @{ Name = 'PetDragTests'; Sources = @('PetDragTests.cs', 'PetDragFollower.cs') },

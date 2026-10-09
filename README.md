@@ -106,9 +106,25 @@ EXE 也支援個別指定：`PetFolio.exe --data-directory 'C:\path\to\.codex'` 
 .\PetFolio.exe --stop
 ```
 
-程式不會自行加入開機啟動。
+程式預設不會加入開機啟動；可在托盤選單自行開啟下述 Windows 選項。
 
 ## 使用方式
+
+### Codex 開啟時自動啟動（Windows）
+
+系統匣選單勾選 **Start when Codex opens** 可啟用，預設關閉。
+勾選後會建立目前使用者的 Windows 登入啟動項，執行輕量監看器；
+它每兩秒辨識具有主窗口、位於 OpenAI.Codex 安裝路徑的 ChatGPT 桌面程序，不監看 CLI。
+Codex 出現後啟動 PetFolio；Codex 主窗口程序消失時退出伴侶並停止額度查詢，監看器繼續等待。
+手動選擇 Exit 或使用 `--stop`，同一次 Codex 執行期間不再自動拉起；關閉並重新開啟 Codex 後恢復。
+
+取消勾選會移除登入啟動項，監看器在下一次輪詢退出，不影響目前的伴侶。
+Windows 若停用了此登入啟動項，需在系統的啟動應用設定重新允許。
+這不是 Windows service，不需管理員權限；插件安裝本身不會啟用。
+登入監看器使用 PetFolio 資料目錄下的獨立程式副本和 `codex-autostart.json`，
+並保留勾選時的桌面資料路徑及可選的 CLI `CODEX_HOME` 路徑（不複製登入憑證）。
+更新版本後可取消並重新勾選，以更新監看器副本。卸載插件前請先取消勾選，否則獨立副本仍會自動啟動。
+目前是沿用既有 Windows Codex 識別規則；客戶端改名、變更安裝路徑或只保留無主窗口背景程序時需再驗證。
 
 | 操作 | 效果 |
 | --- | --- |
@@ -215,7 +231,7 @@ python .\build-pet-palettes.py --asar 'C:\path\to\resources\app.asar' --home 'C:
 - **帳號尚未對齊驗證**：顯示 CLI 帳號的額度，不保證與桌面端帳號一致，也不是逐次消耗的即時串流。
 - **Windows 相容性待擴大驗證**：玻璃使用內部 host-backdrop 介面，不同 Windows 版本與混合 DPI 多螢幕行為仍需實測。
 - **定位並非原生事件整合**：沒有訂閱 Status Bubble 的內部位置事件，客戶端特殊吸附動畫或布局變更仍可能需要適配。
-- **Windows 專用封裝**：提供免安裝 ZIP 與本機 Codex 插件；沒有 Windows 安裝器、自動更新或開機自啟動。升級前退出舊版，使用者資料保留於獨立資料目錄。
+- **Windows 專用封裝**：提供免安裝 ZIP 與本機 Codex 插件；沒有 Windows 安裝器或自動更新。可選擇在 Codex 開啟時自動啟動，預設關閉。升級前退出舊版，使用者資料保留於獨立資料目錄。
 
 ### 維護版本與下載包
 
@@ -351,9 +367,27 @@ Choose **Exit** in the system tray, or run:
 .\PetFolio.exe --stop
 ```
 
-PetFolio does not add itself to Windows startup.
+PetFolio does not register Windows startup by default. You can enable the Windows option below from the tray menu.
 
 ### Using the application
+
+#### Start when Codex opens (Windows)
+
+Check **Start when Codex opens** in the tray menu to opt in (off by default).
+This registers a per-user Windows login entry for a lightweight watcher, polling
+every two seconds. It matches the Codex desktop process with a main window and
+the OpenAI.Codex installation path, never the quota CLI. When Codex closes, the
+companion exits and quota queries stop; the watcher waits for the next launch.
+Manual Exit or `--stop` suppresses automatic relaunch for that Codex session.
+Unchecking removes the login entry and stops the watcher on its next poll.
+
+The watcher uses an independent EXE copy in the PetFolio data directory, with
+desktop and optional CLI `CODEX_HOME` paths in `codex-autostart.json`; credentials
+are not copied. Toggle off/on after an update to refresh the copy. Uncheck before
+plugin uninstall, otherwise the independent copy remains enabled. No administrator
+rights or Windows service are required. Windows Startup Apps may disable the entry.
+Client renames, installation changes, and sessions without a desktop main window
+still require compatibility testing. Plugin installation does not enable this option.
 
 | Action | Result |
 | --- | --- |
@@ -461,7 +495,7 @@ The quota panel is currently 190 × 96 px with 32 px rounded corners and a 12 px
 - **Account matching:** The displayed quota belongs to the CLI account and may differ from the desktop account. It is not a real-time stream of individual usage events.
 - **Windows compatibility:** Glass uses an internal host-backdrop interface. More Windows versions and mixed-DPI multi-monitor setups need testing.
 - **Positioning:** PetFolio does not subscribe to native Status Bubble position events. Special snapping animations or layout changes may require adaptation.
-- **Windows packages:** Portable ZIP and local Codex plugin packages are available. There is no Windows installer, automatic updater, or automatic startup integration. Exit before updating; the separate user data directory is preserved.
+- **Windows packages:** Portable ZIP and local Codex plugin packages are available. There is no Windows installer or automatic updater. Starting when Codex opens is optional and disabled by default. Exit before updating; the separate user data directory is preserved.
 
 #### Maintaining versions and releases
 
