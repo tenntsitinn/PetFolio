@@ -25,6 +25,9 @@ class QuotaLabel : Form {
     bool closing;
     Color panelColor = Color.FromArgb(230,27,31,38);
     int opacityPercent = 90;
+    Color? desktopBackground;
+    internal Func<Rectangle,Color,Color?> ReadBackground=BubbleBackdrop.Capture;
+    internal bool UsesBlackText {get{return PetTheme.Text(panelColor,desktopBackground).ToArgb()==Color.Black.ToArgb();}}
     GlassBackdrop glass;
     CloseBubbleButton dismissButton;
     readonly ToolStripMenuItem showBubble;
@@ -92,6 +95,9 @@ class QuotaLabel : Form {
     }
     internal void Present(QuotaState state) {
         if(closing)return;
+        // IsRefreshing is emitted once per accepted refresh, before the CLI
+        // starts. Timer, tray and bubble clicks all pass through this path.
+        if(state.IsRefreshing)RefreshBackground();
         if(state.Snapshot!=null) {
             line1=WindowText(state.Snapshot.Primary,"Primary");
             line2=WindowText(state.Snapshot.Secondary,"Secondary");
@@ -146,10 +152,20 @@ class QuotaLabel : Form {
         if(!Visible && dismissButton!=null)dismissButton.Follow(Point.Empty,false);
     }
     Color WithOpacity(Color c) {return Color.FromArgb((int)Math.Round(255*opacityPercent/100.0),c.R,c.G,c.B);}
+    void RefreshBackground() {
+        if(closing || !Visible || !bubbleRequested)return;
+        var background=ReadBackground(Bounds,panelColor);
+        // Capture failure must not discard the last known background.
+        if(background.HasValue)desktopBackground=background;
+    }
     void SetOpacity(int percent) {
         opacityPercent=percent;panelColor=WithOpacity(panelColor);
         foreach(var item in opacityChoices)item.Checked=(int)item.Tag==percent;
         SaveAppearance();
+        // Commit the new tint before sampling: the sampler removes this alpha
+        // from the visible glass. Movement and ordinary repaint never sample.
+        RenderFrame();
+        RefreshBackground();
         RenderFrame();
         Program.Record("opacity-changed",new {percent=opacityPercent,alpha=panelColor.A});
     }
@@ -241,7 +257,7 @@ class QuotaLabel : Form {
                     // text, while the visible tint stays in the Composition layer.
                     using(var shape=Rounded(new Rectangle(0,0,Width,Height),32))
                     using(var hit=new SolidBrush(Color.FromArgb(1,panelColor.R,panelColor.G,panelColor.B)))g.FillPath(hit,shape);
-                Color fg=PetTheme.Text(panelColor),muted=PetTheme.Secondary(panelColor);
+                Color fg=PetTheme.Text(panelColor,desktopBackground),muted=PetTheme.Secondary(panelColor,desktopBackground);
                 // Inset the one-pixel stroke so antialiasing stays inside the HWND.
                 using(var outline=Rounded(new RectangleF(.5f,.5f,Width-1,Height-1),31.5f))
                 using(var pen=new Pen(PetTheme.Outline(panelColor),1f))g.DrawPath(pen,outline);
@@ -251,10 +267,10 @@ class QuotaLabel : Form {
                 using(var amount=new Font("Segoe UI",13,FontStyle.Bold,GraphicsUnit.Pixel))
                 using(var primary=new SolidBrush(fg))
                 using(var secondary=new SolidBrush(muted)) {
-                    g.DrawString("Quota remaining",title,primary,24,12,StringFormat.GenericTypographic);
+                    g.DrawString("Quota remaining",title,primary,new RectangleF(24,12,142,20),StringFormat.GenericTypographic);
                     DrawQuotaRow(g,amount,primary,line1,value1,34);
                     DrawQuotaRow(g,amount,primary,line2,value2,54);
-                    g.DrawString(status,detail,secondary,24,76,StringFormat.GenericTypographic);
+                    g.DrawString(status,detail,secondary,new RectangleF(24,76,142,20),StringFormat.GenericTypographic);
                 }
             }
             var screen=Native.GetDC(IntPtr.Zero);var dc=Native.CreateCompatibleDC(screen);
@@ -268,7 +284,7 @@ class QuotaLabel : Form {
             }finally {Native.SelectObject(dc,previous);Native.DeleteObject(handle);Native.DeleteDC(dc);Native.ReleaseDC(IntPtr.Zero,screen);}
         }
     }
-    static void DrawQuotaRow(Graphics g,Font font,Brush ink,string label,string value,float top) {
+    void DrawQuotaRow(Graphics g,Font font,Brush ink,string label,string value,float top) {
         using(var left=(StringFormat)StringFormat.GenericTypographic.Clone())
         using(var right=(StringFormat)StringFormat.GenericTypographic.Clone()) {
             left.FormatFlags|=StringFormatFlags.NoWrap;left.Trimming=StringTrimming.EllipsisCharacter;

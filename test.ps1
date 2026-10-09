@@ -15,6 +15,8 @@ $suites = @(
     @{ Name = 'CompanionSignalsTests'; Sources = @('CompanionSignalsTests.cs', 'CompanionSignals.cs') },
     @{ Name = 'CodexAutoStartTests'; Sources = @('CodexAutoStartTests.cs', 'CodexAutoStart.cs', 'CompanionSignals.cs') },
     @{ Name = 'ThemeTests'; Sources = @('ThemeTests.cs', 'PetTheme.cs') },
+    @{ Name = 'BubbleBackdropTests'; Sources = @('BubbleBackdropTests.cs', 'BubbleBackdrop.cs', 'PetTheme.cs') },
+    @{ Name = 'BubbleCaptureTests'; Sources = @('BubbleCaptureTests.cs', 'BubbleBackdrop.cs', 'PetTheme.cs') },
     @{ Name = 'PetSwitchTests'; Sources = @('PetSwitchTests.cs', 'PetColourSwitch.cs', 'PetTheme.cs') },
     @{ Name = 'PetDragTests'; Sources = @('PetDragTests.cs', 'PetDragFollower.cs') },
     @{ Name = 'PetPanelTests'; Sources = @('PetPanelTests.cs', 'PetPanelPlacement.cs') },

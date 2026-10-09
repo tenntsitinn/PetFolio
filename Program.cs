@@ -14,8 +14,8 @@ using System.Windows.Forms;
 [assembly: System.Reflection.AssemblyTitle("PetFolio")]
 [assembly: System.Reflection.AssemblyProduct("PetFolio")]
 [assembly: System.Reflection.AssemblyDescription("PetFolio desktop companion for Codex Pet")]
-[assembly: System.Reflection.AssemblyVersion("1.2.0.0")]
-[assembly: System.Reflection.AssemblyFileVersion("1.2.0.0")]
+[assembly: System.Reflection.AssemblyVersion("1.2.1.0")]
+[assembly: System.Reflection.AssemblyFileVersion("1.2.1.0")]
 
 // PetFolio reads quota and the pet anchor, never writes Codex settings.
 static class Program {
