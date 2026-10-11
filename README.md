@@ -12,14 +12,21 @@ PetFolio 讓桌面寵物成為工作時有用的小夥伴。第一個功能 **Qu
 
 [快速開始](#快速開始) · [使用方式](#使用方式) · [開發與擴充](#開發與擴充) · [已知限制](#已知限制)
 
+> **Frosted glass 正在進行灰測。** 可在系統匣 `Appearance → Frosted glass` 啟用或停用背景模糊；Default 預設關閉、Pet colour 預設開啟，兩種外觀分別保存選擇。歡迎回報顯示異常或效能問題。
+
 ## 目前功能：Quota Bubble
+
+兩種模式共用 **208 × 104 px** 氣泡，標題為 **Quota remaining / System usage**。雙列指標使用 16px 粗體，標題 13px、輔助資訊 11px（Segoe UI）。進度條分別表示剩餘額度或 CPU／RAM 使用率；Default 使用中性灰進度條，Pet colour 使用寵物主題色並修正對比度；填充與軌道約 85%／15% alpha。System 底部並列顯示完整網速，例如 `↓ 1.2 MB/s  ↑ 256 KB/s`，不顯示更新時間；Quota 底部保留 `updated`。
+
+- **System Bubble**：雙擊同一個氣泡，在額度與系統監控之間切換；也可使用系統匣的 **Switch to System usage / Switch to Quota remaining**。模式會保存，下次啟動自動恢復。系統模式每兩秒顯示整機 CPU 使用率、實體記憶體使用率，以及網路下載（↓）與上傳（↑）速率；單擊可刷新當前模式，拖動與關閉操作保持一致。
+- 系統模式沿用原有視窗、大小、配色與定位，不新增氣泡。隱藏或回到額度模式時停止系統採樣；額度仍依原有週期在背景更新。CPU 與網速首次採樣顯示 `--`，下一次採樣才有速率。網速合計啟用中的非 loopback、非 tunnel 介面；VPN 或虛擬網卡可能造成重複計算，數值不是 Codex 專屬流量。單擊會等待系統雙擊判定時間，避免切換模式時觸發額度查詢。
 
 - **查看剩餘額度**：透過 Codex CLI 的 `account/rateLimits/read` 查詢，以回傳的計算週期顯示剩餘百分比；充值積分不混入訂閱額度。
 - **自動與手動刷新**：啟用時立即查詢，之後每五分鐘刷新；單擊氣泡可立即更新。查詢中保留已有數值，失敗時保留最近一次結果並標示更新失敗。
 - **跟隨與定位**：拖動寵物時氣泡持續跟隨；拖動氣泡可選擇寵物左上、右上、左下或右下方位。靠近螢幕邊緣時自動調整，空間恢復後回到偏好方位。
-- **配色與玻璃背景**：配色優先使用寵物源圖快取，無有效快取時嘗試從寵物視窗取色。支援圓角、陰影及 10%～100% 背景不透明度；玻璃初始化失敗時回退為半透明背景。
+- **配色與玻璃背景**：Default 使用原生氣泡配色；Pet colour 配色優先使用寵物源圖快取，無有效快取時嘗試從寵物視窗取色。兩種外觀支援圓角；Pet colour 提供陰影及 10%～100% 背景不透明度；玻璃初始化失敗時回退為半透明背景。
 - **減少操作干擾**：氣泡不搶走編輯器焦點，透明圓角及背景、陰影區域可讓滑鼠穿透；寵物隱藏或關閉時，氣泡也會隱藏。
-- **獨立功能開關**：可暫時隱藏氣泡，或停用整個額度功能；透明度與相對方位會保存在本機。
+- **獨立功能開關**：可暫時隱藏氣泡，或分別停用額度與系統模式；功能開關、透明度與相對方位會保存在本機。
 
 額度來源是 **CLI 登入帳號**。目前不會檢查它是否與 Codex 桌面端帳號一致，使用多帳號時請自行確認。
 
@@ -78,7 +85,7 @@ codex plugin add petfolio@petfolio-local
 
 建置會產生 `PetFolio.exe`，並嵌入 `assets/PetFolio.ico` 作為程式及系統匣圖標。啟動後，系統匣會出現標示為 **PetFolio** 的圖示；寵物可見且被成功識別時，旁邊會出現額度氣泡。快捷方式也可選用此 ICO 檔作為圖標。
 
-日常使用也可雙擊根目錄的 **Open PetFolio.vbs**。它會隱藏命令視窗，並在執行檔不存在時自動建置；需要系統允許執行 VBScript。若已有執行個體，再次啟動會啟用額度功能並恢復氣泡，不會另開一份。修改原始碼後須重新執行 `build.ps1`，啟動器不會自動重建已存在的執行檔。
+日常使用也可雙擊根目錄的 **Open PetFolio.vbs**。它會隱藏命令視窗，並在執行檔不存在時自動建置；需要系統允許執行 VBScript。若已有執行個體，再次啟動會恢復已啟用內容的氣泡，不會另開一份。修改原始碼後須重新執行 `build.ps1`，啟動器不會自動重建已存在的執行檔。
 
 ### 指定 CLI 與桌面資料目錄
 
@@ -131,20 +138,25 @@ Windows 若停用了此登入啟動項，需在系統的啟動應用設定重新
 | 單擊氣泡內部 | 立即刷新額度；查詢中重複點擊不會增加請求 |
 | 拖動氣泡 | 選擇相對於寵物的方位，放開後以彈簧動畫吸附 |
 | 拖動時按 Esc | 取消本次氣泡拖動 |
-| 系統匣 `Refresh quota` | 手動刷新額度 |
-| 系統匣 `Opacity` | 以 10% 為間隔調整背景不透明度 |
+| 系統匣 `Refresh` | 刷新目前模式的資料與字體顏色 |
+| 系統匣 `Appearance → Default / Pet colour` | Default 跟隨 Windows 應用程式深淺色，使用原生氣泡配色及固定約 90% 不透明度、不模糊背景；Pet colour 使用寵物配色及毛玻璃 |
+| 系統匣 `Appearance → Opacity` | 僅 Pet colour 可調整；切回時恢復先前設定 |
+| 系統匣 `Appearance → Frosted glass` | 啟用／停用背景模糊；Default 與 Pet colour 分別記住設定，初始為關／開 |
+
 | 懸停後點擊左上角 × | 隱藏氣泡，背景額度刷新繼續執行 |
-| 系統匣 `Show Quota Bubble` | 恢復被隱藏的氣泡 |
-| 系統匣 `Features → Quota Bubble` | 停用／啟用額度功能；停用會釋放視窗、停止刷新並終止在途查詢 |
+| 系統匣 `Show Bubble` | 恢復被隱藏的氣泡 |
+| 系統匣 `Features → Quota remaining / System usage` | 分別啟用內容；停用 Quota 會停止額度查詢，停用 System 會停止系統採樣 |
 | 系統匣 `Exit` | 結束整個應用程式 |
 
 滑鼠移動達到 4 px 才視為拖動；拖回原點也不會誤觸刷新。取消拖動、失去滑鼠捕獲、在圓角主體外放開或點擊 ×，均不觸發刷新。
 
 更新時顯示 `Updating...`，成功後顯示更新時間。若已有結果但查詢失敗，顯示 `Failed · last HH:mm`；首次查詢失敗則顯示重試提示。舊數值不代表當前額度。
 
-隱藏及功能停用狀態僅限目前執行階段，重新啟動預設顯示並啟用額度功能；背景不透明度與偏好方位則會保留。
+托盤主菜單及子菜單自動跟隨 Codex 的 dark / light 主題；Codex 選擇 system 時則跟隨 Windows 應用程式主題，無需重新啟動。
 
-標題與額度文字使用 Alpha=1，更新時間使用相同 RGB、Alpha 約 0.9（230/255），以透明度呈現層次。背景色辨識僅在啟動後首次額度查詢、每次實際自動或手動額度查詢，以及套用新透明度時進行。氣泡隱藏時跳過取樣；移動、寵物配色更新與一般重繪使用上次結果。取樣避開文字區域，以氣泡空白邊緣估計背景，只在記憶體處理，不保存畫面。氣泡背景不透明度為 10% 或 20% 時，不論主色深淺，都根據背景對比直接選擇黑字或白字，不加文字描邊；取樣失敗保留上次結果，尚無結果時沿用主色配字。
+隱藏狀態僅限目前執行階段；兩項功能開關、目前模式、背景不透明度與偏好方位會保留。只有兩項都啟用時才可雙擊或使用 `Switch to …` 切換；停用目前模式會切到另一個已啟用模式，啟用另一項則不會改變目前模式。全部停用時隱藏氣泡，`Show Bubble` 與 `Refresh` 置灰。
+
+Default 使用客戶端原生文字色，預設跟隨系統主題。以下透明度與背景取樣規則僅適用於 Pet colour：百分比數字使用 Alpha=1，標題、指標標籤、網速與更新時間使用相同 RGB、Alpha 0.8（204/255），以透明度呈現層次。背景色辨識在啟動後首次額度查詢、每次實際自動或手動額度查詢，以及套用新透明度時進行；System 模式在 10%／20% 背景不透明度下，也會隨每兩秒指標刷新重新取樣。氣泡隱藏時跳過取樣；移動、寵物配色更新與一般重繪使用上次結果。取樣避開文字區域，以氣泡空白邊緣估計背景，只在記憶體處理，不保存畫面。氣泡背景不透明度為 10% 或 20% 時，不論主色深淺，都根據背景對比直接選擇黑字或白字，不加文字描邊；取樣失敗保留上次結果，尚無結果時沿用主色配字。
 
 ## 本機資料與設定
 
@@ -154,7 +166,7 @@ PetFolio 讀取 Codex 的寵物設定與視窗狀態，不修改桌面端設定�
 
 | 檔案 | 內容 |
 | --- | --- |
-| `appearance.json` | 背景不透明度與偏好方位 |
+| `appearance.json` | 外觀模式、Pet colour 不透明度、偏好方位、內容開關與 Quota / System 模式 |
 | `pet-palettes.json` | 寵物配色、寵物 ID、源圖路徑及有效性資訊 |
 | `quota-snapshot.json` | 最近一次成功查詢的額度快照 |
 | `probe-events.jsonl` | 額度、寵物切換、位置及錯誤等診斷事件 |
@@ -221,7 +233,7 @@ python .\build-pet-palettes.py --asar 'C:\path\to\resources\app.asar' --home 'C:
 
 ### 設計與診斷
 
-目前額度面板為 190 × 96 px，採 32 px 圓角，位於寵物左右兩側並保留 12 px 間距；上下區域留給原生 Status Bubble 與 Action Bar。跟隨計時器設定為 16 ms，這不是固定幀率保證。
+目前額度面板為 208 × 104 px，採 25 px 圓角，位於寵物左右兩側並保留 12 px 間距；上下區域留給原生 Status Bubble 與 Action Bar。跟隨計時器設定為 16 ms，這不是固定幀率保證。
 
 [design/](design/) 保存選定的設計素材。[描邊設計稿](design/quota-bubble-outline-preview.png) 與 [SVG 原稿](design/quota-bubble-outline-preview.svg) 是設計過程資料，並非目前版本的實機截圖；部分文字與版面已落後於程式實作。應用使用 [PetFolio 圖標原稿](design/petfolio-symbol-v12.svg)，程式及系統匣已嵌入書本、爪印與黃色書簽圖標。
 
@@ -249,7 +261,7 @@ python .\build-pet-palettes.py --asar 'C:\path\to\resources\app.asar' --home 'C:
 | --- | --- |
 | 提示找不到 Codex CLI | 用 EXE 的兩個路徑參數，或腳本的 `-CodexExecutable` 與 `-DataDirectory` 指定環境 |
 | 提示找不到 Codex 桌面資料 | 先在 Codex 開啟 Pet，確認資料目錄包含 `.codex-global-state.json` |
-| 系統匣有圖示但沒有氣泡 | 確認寵物可見、功能已啟用，並選擇 `Show Quota Bubble`；仍無法顯示時檢查客戶端版本與視窗識別 |
+| 系統匣有圖示但沒有氣泡 | 確認寵物可見、功能已啟用，並選擇 `Show Bubble`；仍無法顯示時檢查客戶端版本與視窗識別 |
 | 額度讀取失敗或與桌面端不同 | 確認 CLI 登入帳號、啟動環境與網路狀態，再點擊氣泡重試 |
 | 找不到編譯器或參考組件 | 對照 `build.ps1` 中的 Framework、GAC 與 WinMetadata 路徑；目前建置腳本尚未自動適配其他安裝位置 |
 | PowerShell 拒絕執行腳本 | 依所在環境的執行原則處理；受管理裝置需遵循其政策 |
@@ -277,14 +289,21 @@ Extensibility is a core requirement. The application host, shared pet state, and
 
 PetFolio includes a standalone Windows application and an installable local Codex plugin that starts, stops, and diagnoses the companion. It has not been published to the public plugin directory. PetFolio is the project name; Quota Bubble is its quota feature.
 
+> **Frosted glass is currently in testing.** Toggle background blur in `Appearance → Frosted glass`. Default starts with blur off and Pet colour with blur on; each appearance remembers its own choice. Please report rendering or performance issues.
+
 ### Current feature: Quota Bubble
+
+Both modes share a **208 × 104 px** bubble titled **Quota remaining / System usage**. Typography uses Segoe UI: 13px titles, 16px bold metrics and 11px supporting text. Progress bars show quota remaining or CPU/RAM usage; Default uses neutral progress bars; Pet colour uses contrast-corrected pet colours. Both use approximately 85% fill / 15% track alpha. System displays download/upload rates with full units in the footer, for example `↓ 1.2 MB/s  ↑ 256 KB/s`, without a timestamp. Quota retains its `updated` footer.
+
+- **System Bubble**: Double-click the existing bubble to switch between quota and system metrics, or use **Switch to System usage / Switch to Quota remaining** in the tray menu. The mode is saved. System mode updates whole-system CPU usage, physical memory usage, and download (↓) / upload (↑) rates every two seconds. Single-click refreshes the current mode; dragging and closing work as before.
+- Both modes share the same window, size, colour and placement. System sampling stops when hidden or switched to quota; quota polling continues on its original schedule. CPU and network rates initially show `--` until a second sample arrives. Traffic totals include active non-loopback, non-tunnel interfaces; VPN and virtual adapters may count traffic twice. These are system totals, not Codex-only traffic. Single-click waits for the OS double-click interval to avoid querying quota when switching modes.
 
 - **Remaining quota:** Uses the Codex CLI `account/rateLimits/read` response to display remaining percentages for the returned usage windows. Purchased credits are kept separate from subscription quota.
 - **Automatic and manual refresh:** Queries immediately when enabled and every five minutes afterward. Click the bubble to refresh. Existing values remain visible during updates and after failures, with a failure indicator when appropriate.
 - **Following and placement:** Follows pet dragging. Drag the bubble to prefer the pet's upper left, upper right, lower left, or lower right. Placement adjusts near screen edges and returns to your preferred side when space becomes available.
-- **Colors and glass background:** Prefers a valid palette cache derived from pet source images; otherwise attempts to sample the pet window. Supports rounded corners, shadows, and background opacity from 10% to 100%. Falls back to a translucent background if glass initialization fails.
+- **Colors and glass background:** Default uses native bubble colours. Pet colour prefers a valid palette cache derived from pet source images; otherwise attempts to sample the pet window. Both appearances support rounded corners; Pet colour provides shadows and background opacity from 10% to 100%. Falls back to a translucent background if glass initialization fails.
 - **Less interference:** Does not take focus from your editor. Transparent corners, background, and shadow regions allow mouse input to pass through. The bubble hides when the pet is hidden or closed.
-- **Independent feature controls:** Temporarily hide the bubble or disable the quota feature entirely. Background opacity and preferred placement are saved locally.
+- **Independent feature controls:** Temporarily hide the bubble or enable quota and system modes independently. Feature switches, background opacity and preferred placement are saved locally.
 
 Quota comes from the **CLI login account**. PetFolio currently does not verify that this account matches the Codex desktop account; check this yourself when using multiple accounts.
 
@@ -341,7 +360,7 @@ Open PowerShell in the project root:
 
 The build produces `PetFolio.exe`, embedding `assets/PetFolio.ico` for the executable and system tray. A **PetFolio** tray icon appears when the application starts. The quota bubble appears when a visible pet is successfully identified.
 
-You can also double-click **Open PetFolio.vbs**. It hides the command window and builds the application if the executable is missing; this requires VBScript to be enabled. Launching again restores the quota feature and bubble in the existing instance. Rebuild with `build.ps1` after changing source files; the launcher does not rebuild an existing executable automatically.
+You can also double-click **Open PetFolio.vbs**. It hides the command window and builds the application if the executable is missing; this requires VBScript to be enabled. Launching again restores the bubble in the existing instance while respecting enabled modes. Rebuild with `build.ps1` after changing source files; the launcher does not rebuild an existing executable automatically.
 
 #### Specify the CLI and desktop data directory
 
@@ -393,23 +412,28 @@ still require compatibility testing. Plugin installation does not enable this op
 
 | Action | Result |
 | --- | --- |
-| Click inside the bubble | Refresh quota immediately; repeated clicks during a query do not add requests |
+| Click inside the bubble | Refresh current data and text colour; repeated clicks during a quota query do not add requests |
 | Drag the bubble | Choose its position relative to the pet; it snaps into place with a spring animation |
 | Press Esc while dragging | Cancel the drag |
-| Tray: `Refresh quota` | Refresh manually |
-| Tray: `Opacity` | Adjust background opacity in 10% increments |
+| Tray: `Refresh` | Refresh the current mode's data and text colour |
+| Tray: `Appearance → Default / Pet colour` | Default follows Windows app light/dark mode using native bubble colours and fixed approximately 90% opacity without background blur; Pet colour uses the pet palette and frosted glass |
+| Tray: `Appearance → Opacity` | Adjustable only in Pet colour; the previous value is restored when switching back |
+| Tray: `Appearance → Frosted glass` | Enable / disable background blur; Default and Pet colour remember separate choices, initially off / on |
+
 | Hover and click the upper-left × | Hide the bubble while background refresh continues |
-| Tray: `Show Quota Bubble` | Restore the hidden bubble |
-| Tray: `Features → Quota Bubble` | Disable or enable the feature; disabling releases windows, stops refresh, and cancels the active query |
+| Tray: `Show Bubble` | Restore the hidden bubble |
+| Tray: `Features → Quota remaining / System usage` | Enable each mode independently; disabling Quota stops quota queries, disabling System stops system sampling |
 | Tray: `Exit` | Close the application |
 
 Mouse movement of at least 4 px counts as dragging. Dragging back to the starting point does not trigger a refresh. Canceling, losing mouse capture, releasing outside the rounded body, or clicking × also does not refresh.
 
 During a query, the bubble displays `Updating...`. Successful queries show the update time. A failed query with previous data displays `Failed · last HH:mm`; an initial failure shows a retry prompt. Previously displayed values are not guaranteed to reflect current quota.
 
-Hidden and disabled states apply only to the current session. The quota feature is enabled and the bubble shown by default after restarting. Background opacity and preferred placement are retained.
+The tray menu and all submenus follow Codex's dark / light theme. When Codex selects system, they follow Windows app appearance without restarting.
 
-Title and quota text use alpha 1; the update time uses the same RGB with alpha approximately 0.9 (230/255) for visual depth. Background sampling occurs only with the first quota query after startup, each accepted automatic or manual quota query, and applying a new opacity setting. Hidden bubbles skip sampling; movement, pet color updates, and ordinary repaint reuse the cached result. Blank bubble margins estimate the background without sampling text. Captures remain in memory and are not saved. Both light and dark pet colors at 10% or 20% opacity use plain black or white text according to background contrast, without a text outline. Failed captures retain the previous result; without a result, the original pet-based text colour is used.
+Hiding applies only to the current session. Both feature switches, the selected mode, background opacity and preferred placement are retained. Double-click and `Switch to …` are available only when both modes are enabled. Disabling the current mode selects the other enabled mode; enabling another mode preserves the current selection. With both disabled, the bubble is hidden and `Show Bubble` / `Refresh` are disabled.
+
+Default uses native client text colours and follows the system theme. The following opacity and background-sampling rules apply only to Pet colour: percentage values use alpha 1; titles, metric labels, network rates and update time use the same RGB with alpha 0.8 (204/255) for visual depth. Background sampling occurs with the first quota query after startup, each accepted automatic or manual quota query, and applying a new opacity setting. At 10% / 20% background opacity, System mode also samples with each two-second metrics refresh. Hidden bubbles skip sampling; movement, pet color updates, and ordinary repaint reuse the cached result. Blank bubble margins estimate the background without sampling text. Captures remain in memory and are not saved. Both light and dark pet colors at 10% or 20% opacity use plain black or white text according to background contrast, without a text outline. Failed captures retain the previous result; without a result, the original pet-based text colour is used.
 
 ### Local data and settings
 
@@ -419,7 +443,7 @@ These files are stored in `%LOCALAPPDATA%\PetFolio`, or an absolute directory sp
 
 | File | Contents |
 | --- | --- |
-| `appearance.json` | Background opacity and preferred placement |
+| `appearance.json` | Background opacity, preferred placement and Quota / System mode |
 | `pet-palettes.json` | Pet colors, IDs, source-image paths, and validity metadata |
 | `quota-snapshot.json` | Latest successful quota snapshot |
 | `probe-events.jsonl` | Diagnostic events for quota, pet changes, positioning, and errors |
@@ -487,7 +511,7 @@ This tool briefly displays a test backdrop and writes screenshots to its output 
 
 #### Design and diagnostics
 
-The quota panel is currently 190 × 96 px with 32 px rounded corners and a 12 px gap beside the pet. Upper and lower areas are reserved for the native Status Bubble and Action Bar. The follow timer uses a 16 ms interval; this is not a frame-rate guarantee.
+The quota panel is currently 208 × 104 px with 25 px rounded corners and a 12 px gap beside the pet. Upper and lower areas are reserved for the native Status Bubble and Action Bar. The follow timer uses a 16 ms interval; this is not a frame-rate guarantee.
 
 [design/](design/) contains selected assets. The [outline preview](design/quota-bubble-outline-preview.png) and its [SVG source](design/quota-bubble-outline-preview.svg) are design studies rather than screenshots of the current application; some text and layout are outdated. The application and tray use the embedded book, paw, and yellow-bookmark icon from the [PetFolio SVG](design/petfolio-symbol-v12.svg).
 
@@ -515,7 +539,7 @@ Run `./package-plugin.ps1` for the plugin ZIP, checksum, and local marketplace. 
 | --- | --- |
 | Startup reports that the CLI cannot be found | Pass both paths to the EXE, or use `-CodexExecutable` and `-DataDirectory` with the script |
 | Startup reports missing desktop data | Open a Pet in Codex and confirm the data directory contains `.codex-global-state.json` |
-| Tray icon appears but there is no bubble | Confirm the pet is visible and the feature enabled, then choose `Show Quota Bubble`; also check client compatibility and window discovery |
+| Tray icon appears but there is no bubble | Confirm the pet is visible and the feature enabled, then choose `Show Bubble`; also check client compatibility and window discovery |
 | Quota fails or differs from the desktop | Check the CLI account, launch environment, and connection, then click the bubble to retry |
 | Compiler or reference assemblies are missing | Check Framework, GAC, and WinMetadata paths in `build.ps1`; discovery for alternative build layouts is not implemented |
 | PowerShell blocks scripts | Follow your environment's execution policy and managed-device requirements |

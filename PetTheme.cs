@@ -48,7 +48,7 @@ static class PetTheme {
     // A subtle hairline uses the text RGB, independently of the glass opacity.
     public static Color Outline(Color background) {return Color.FromArgb(60,Text(background));}
     public static Color Secondary(Color background) {
-        return Color.FromArgb(230,Text(background));
+        return Color.FromArgb(204,Text(background));
     }
     public static double RenderedContrast(Color surface,Color ink) {
         return Contrast(surface,Mix(surface,ink,ink.A/255.0));
@@ -61,10 +61,20 @@ static class PetTheme {
         var surface=Mix(desktop.Value,background,background.A/255.0);
         // Select the shared RGB using the softer status text; the primary ink
         // is opaque and therefore has at least the same contrast.
-        return RenderedContrast(surface,Color.FromArgb(230,Color.Black))>=RenderedContrast(surface,Color.FromArgb(230,Color.White))?Color.Black:Color.White;
+        return RenderedContrast(surface,Color.FromArgb(204,Color.Black))>=RenderedContrast(surface,Color.FromArgb(204,Color.White))?Color.Black:Color.White;
     }
     public static Color Secondary(Color background,Color? desktop) {
-        return Color.FromArgb(230,Text(background,desktop));
+        return Color.FromArgb(204,Text(background,desktop));
+    }
+    public static Color ProgressAccent(Color background,Color? desktop) {
+        var surface=desktop.HasValue?Mix(desktop.Value,background,background.A/255.0):Color.FromArgb(255,background);
+        var ink=Text(surface);
+        var seed=background.GetSaturation()<.15?Color.FromArgb(129,193,183):Color.FromArgb(255,background);
+        for(int step=0;step<=20;step++) {
+            var candidate=Mix(seed,ink,step/20.0);
+            if(RenderedContrast(surface,Color.FromArgb(217,candidate))>=3)return candidate;
+        }
+        return ink;
     }
     public static int Distance(Color a,Color b) {return Math.Abs(a.R-b.R)+Math.Abs(a.G-b.G)+Math.Abs(a.B-b.B);}
 }

@@ -10,6 +10,8 @@ $originalDataDirectory = $env:PETFOLIO_DATA_DIR
 $localDataDirectory = if ($originalDataDirectory) { $originalDataDirectory } else { Join-Path ([Environment]::GetFolderPath('LocalApplicationData')) 'PetFolio' }
 $env:PETFOLIO_DATA_DIR = Join-Path $testRoot 'runtime-data'
 $suites = @(
+    @{ Name = 'CodexMenuThemeTests'; Sources = @('CodexMenuThemeTests.cs', 'CodexMenuTheme.cs') },
+    @{ Name = 'SystemMetricsTests'; Sources = @('SystemMetricsTests.cs', 'SystemMetrics.cs') },
     @{ Name = 'StartupTests'; Sources = @('StartupTests.cs', 'StartupConfiguration.cs') },
     @{ Name = 'RuntimeDataTests'; Sources = @('RuntimeDataTests.cs', 'RuntimeData.cs') },
     @{ Name = 'CompanionSignalsTests'; Sources = @('CompanionSignalsTests.cs', 'CompanionSignals.cs') },
@@ -43,7 +45,7 @@ try {
         if ($LASTEXITCODE -ne 0) { throw ($result -join [Environment]::NewLine) }
         Write-Output ('{0}: {1}' -f $suite.Name, $result[-1])
     }
-    foreach ($suiteName in @('FeatureLifecycleTests', 'BubbleClickTests')) {
+    foreach ($suiteName in @('FeatureLifecycleTests', 'BubbleClickTests', 'TrayOverlapTests', 'BubbleMaterialTests')) {
         $lifecycleExecutable = Join-Path $testRoot ($suiteName + '.exe')
         $generated += $lifecycleExecutable
         & (Join-Path $projectRoot 'build.ps1') -OutputDirectory $testRoot -OutputName ($suiteName + '.exe') -EntryPoint $suiteName -Target 'exe' -AdditionalSources ($suiteName + '.cs')

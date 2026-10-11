@@ -39,17 +39,31 @@ flowchart TD
 ## 三种不同操作
 
 - **隐藏**：点击 ×；窗口、玻璃与阴影隐藏，额度仍继续刷新，托盘命令可恢复同一视窗。
-- **停用功能**：托盘 `Features → Quota Bubble` 取消勾选；取消订阅、停止额度计时器、终止在途查询并销毁视窗。再次启用创建新实例、读取已有外观设置并立即查询。
+- **停用内容**：托盘 `Features → Quota remaining / System usage` 独立控制两个模式。停用额度释放 QuotaService，停用 System 停止采样。共享视图保留；两项都关闭时隐藏视图并禁用 Show Bubble / Refresh。重新启用额度创建服务并立即查询。
 - **退出应用**：托盘 `Exit` 或 `--stop`；释放所有功能、共用追踪器、鼠标 hook、托盘及调度资源。
 
-功能启用状态仅限当前会话；启动时默认启用额度功能。重复启动程序会启用并恢复额度功能。原有 `appearance.json` 的透明度与方位格式保持兼容。
+`appearance.json` 保存 `quotaEnabled`、`systemEnabled` 与 `bubbleMode`；旧设置缺少开关时默认两项启用。重复启动只恢复已启用内容的气泡，不覆盖功能开关。`ICompanionFeature.FeatureOptions` 由模块持有并同步勾选，宿主负责放入 Features 菜单。只有两项都启用才提供切换；关闭当前模式切换到另一个已启用模式。Refresh 与单击使用同一入口，刷新当前模式的数据和字体颜色。
+
+System Bubble 是同一视图的第二种显示模式，未注册第二个 feature 或创建第二个气泡。`QuotaLabel` 保存 `bubbleMode`，通过双击或托盘切换，保留额度快照；单击延迟到系统双击判定时间之后，防止切换触发额度查询。系统模式可见时每两秒读取 `SystemMetricsSource`：CPU 使用 `GetSystemTimes` 差分（kernel 包含 idle），内存使用 `GlobalMemoryStatusEx`，网络按介面 ID 对字节计数和单调时间作差。隐藏、切回额度或销毁视图时停止系统计时器并清空采样基线；额度只在 Quota remaining 启用期间保持轮询。新介面或计数器复位不会产生速率尖峰。
+
+## 外观策略
+
+托盘菜单由 `TrayMenuStyle` 统一展示：使用 Windows `SystemFonts.MenuFont`，主菜单及子菜单采用 8px 圆角、4px 内边距和 28px 行高（按 DPI 缩放），统一文字、勾选和子菜单箭头列。样式复用原有 ToolStrip 项目，不修改命令、启用状态或事件处理。
+
+菜单颜色跟随 Codex home 下 `config.toml` 的 `appearanceTheme`：dark / light 优先于系统，system 或缺省时读取 Windows 应用主题。打开菜单立即检查，并每两秒同步所有已创建子菜单；读取失败保留上次主题。深浅色分别设置底色、文字、禁用项、分隔线、勾选、箭头及悬停色，不影响气泡的外观选择。
+
+托盘根菜单打开时，宿主通知气泡暂停悬停关闭按钮、窗口跟随和桌面取色，保留最新宠物状态及数据刷新。避免关闭按钮窗口 Show 触发 ToolStrip 的 AppFocusChange，或气泡重新置顶遮住菜单。根菜单关闭后通过 UI 队列恢复，确保所有子菜单已退出；`TrayOverlapTests` 使用真实菜单与层叠气泡重复验证重叠、子菜单及恢复行为。
+
+外观与内容模式独立：`appearanceMode` 保存 `default / pet`，缺省为 Default。`BubbleAppearance` 保存客户端 26.1007 的浅色 `#ffffffe6` / 深色 `#202020e6`、文字与描边令牌；固定 alpha 230，使用中性灰进度条和内侧高光。Default 是半透明底色，不模糊桌面；GlassBackdrop 将 Gaussian 背景层的 Opacity 设为 0，切回 Pet colour 恢复为 1。Default 不使用桌面采样或宠物颜色，不显示旧模式的外阴影。通过 Windows 设置/主题消息及两秒补偿检查读取 `AppsUseLightTheme`，读取失败保留现有主题。Pet colour 保留毛玻璃、`opacityPercent` 和低透明度黑白字适配；切换外观会清除旧桌面样本。外观计时器随视图释放，Pet colour 下停止。`BubbleMaterialTests` 用真实合成窗口上黑白条纹的像素对比验证材质切换。
 
 ## 添加下一个功能
+
+`Appearance → Frosted glass` 独立控制背景模糊。`defaultFrostedGlass` 与 `petFrostedGlass` 保存各外观的选择，旧设置缺省为 false / true。开关直接修改背景模糊层的 Opacity，不改变底色、字体、透明度限制或外阴影规则。
 
 1. 实现 `ICompanionFeature`，提供 `Start`、`Stop`、`Restore`、`Dispose` 和菜单命令。
 2. 在宿主构造阶段显式创建并 `Register`。需要宠物状态时注入现有 `IPetStateSource`，不要再建立一份宠物轮询或鼠标 hook。
 3. `Start` 应可重复调用且不重复订阅；`Stop` 应可重复调用并完整释放功能资源；停止后允许重新启动，最终 `Dispose` 后不再启动。
-4. 菜单命令由功能拥有，停用时释放，重新启用时重新创建。宿主只负责把命令加入托盘。
+4. 菜单命令及 FeatureOptions 由模块拥有。内容开关独立于模块生命周期；模块 Stop 释放视图命令，Dispose 释放功能选项。宿主只负责把命令加入托盘。
 5. 对跨模块边界增加行为测试：停用一个功能不能影响另一个功能，旧异步结果不能污染重启后的实例。
 
 如果未来多个独立模块都需要额度数据，再将 `QuotaService` 提升为宿主共用服务；目前由额度功能拥有，停用即可停止查询。
@@ -77,3 +91,8 @@ flowchart TD
 `RuntimeData` 统一解析 `%LOCALAPPDATA%\PetFolio` 或绝对 `PETFOLIO_DATA_DIR`，并从程序目录迁移旧偏好与配色元数据。插件缓存只有程序与资源；用户资料不随插件更新或卸载删除。`Program.Folder` 仍用于独立视觉验证产物，业务设置及缓存使用 `Program.DataFolder`。
 
 `test-plugin.ps1` 验证 Windows PowerShell 5.1、中文与空格路径、缓存搬迁，以及隔离 Codex 安装／卸载。可选 `-TestLaunch` 使用假 CLI 验证实际宿主启停。当前没有 MCP 控制界面或生命周期 hooks；客户端内部宠物跟踪仍需现场兼容性测试。
+
+
+正式气泡布局由 `BubbleLayout` 统一 208×104 尺寸和 25px 圆角，供前景、玻璃裁剪、阴影与命中区域使用。双列 x=20/114、进度条宽 74px，底部信息固定在 (20,82)：Quota 显示更新时间，System 使用 `SystemMetrics.Rate` 并列显示完整单位的上下行网速，不显示更新时间或单位悬停提示；超宽时只舍入数值，保留完整单位。Pet colour 辅助文字 alpha 固定为 204（80%）；Default 使用原生主次文字色。进度条使用数值快照，缺失值仅画轨道；配色 alpha 独立于玻璃透明度，按合成背景调整可见对比度。
+
+Pet colour 的 System 模式在背景不透明度为 10% 或 20% 时随指标刷新重新采样桌面，使黑白字体不依赖五分钟额度刷新。隐藏时不采样，采样失败保留上次背景；常规透明度不增加系统刷新取样。

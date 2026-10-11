@@ -38,9 +38,18 @@ static class BubbleClickTests {
         var point=new IntPtr(x|(y<<16));
         SendMessage(view.Handle,0x201,new IntPtr(1),point);
         SendMessage(view.Handle,0x202,IntPtr.Zero,point);
+        FlushClick();
+    }
+    static void FlushClick() {
+        var deadline=DateTime.UtcNow.AddMilliseconds(SystemInformation.DoubleClickTime+80);
+        while(DateTime.UtcNow<deadline){Application.DoEvents();Thread.Sleep(10);}
     }
     [DllImport("user32.dll")]static extern IntPtr SendMessage(IntPtr h,int m,IntPtr w,IntPtr l);
     [STAThread] static void Main() {
+        try {Run();}
+        catch(Exception e) {Console.Error.WriteLine(e.Message);Console.Error.WriteLine(e.StackTrace);Environment.ExitCode=1;}
+    }
+    static void Run() {
         Application.EnableVisualStyles();Application.SetCompatibleTextRenderingDefault(false);
         var source=new Source();var pending=new ConcurrentQueue<Action>();
         using(var posted=new AutoResetEvent(false))
@@ -48,6 +57,10 @@ static class BubbleClickTests {
             Action drain=()=>{Check(posted.WaitOne(5000),"Query completion arrives");Action a;while(pending.TryDequeue(out a))a();};
             feature.Start();Check(source.Entered.WaitOne(5000),"Initial request starts");drain();
             var view=feature.View;int clicks=0;view.RefreshRequested+=()=>clicks++;
+            view.SetDefaultAppearance(false);
+            Check(view.ClientSize==new Size(208,104),"Approved compact geometry is used");
+            if(view.Owner is GlassBackdrop)Check(view.Owner.ClientSize==view.ClientSize,"Glass and foreground share dimensions");
+            view.SetMode(false);
             view.UpdatePet(new PetState(new IntPtr(1),new Point(600,400),112,true,true,false,"dark-test",Color.FromArgb(35,30,48)));
             typeof(QuotaLabel).GetMethod("SetOpacity",BindingFlags.Instance|BindingFlags.NonPublic).Invoke(view,new object[]{20});
             int backgroundReads=0;Color? background=Color.White;
@@ -99,15 +112,112 @@ static class BubbleClickTests {
             Check(source.Entered.WaitOne(5000) && backgroundReads==readsBeforeMovement,"Hidden bubble keeps quota polling without capturing a background");
             source.Release.Set();drain();
             feature.Restore();
+            before=clicks; // Tray and body now share the same refresh dispatch.
             background=null;
             source.Fail=true;
             Mouse(view,"OnMouseDown",80,40);Mouse(view,"OnMouseMove",83,43);Mouse(view,"OnMouseUp",83,43);
+            FlushClick();
             Check(source.Entered.WaitOne(5000) && clicks==before+1,"Sub-threshold pointer jitter still refreshes");
             source.Release.Set();drain();
             Check(Text(view,"status").StartsWith("Failed · last ") && Text(view,"value1")==amount,"Failure retains amount and shows last successful time");
             Check(view.UsesBlackText && backgroundReads==readsBeforeMovement+1,"Capture failure preserves last known background without blocking quota error feedback");
             source.Fail=false;Click(view);Check(source.Entered.WaitOne(5000),"Failed refresh can be retried by clicking");
             source.Release.Set();drain();Check(Text(view,"status").StartsWith("updated "),"Retry clears error feedback");
+            before=clicks;
+            var hwnd=view.Handle;var size=view.Size;var point=new IntPtr(80|(40<<16));
+            SendMessage(hwnd,0x201,new IntPtr(1),point);SendMessage(hwnd,0x202,IntPtr.Zero,point);
+            SendMessage(hwnd,0x203,new IntPtr(1),point);SendMessage(hwnd,0x202,IntPtr.Zero,point);
+            FlushClick();
+            Check(view.SystemMode && clicks==before,"Double click switches to System without a quota refresh");
+            Check(view.Handle==hwnd && view.Size==size,"Switch reuses the same window and geometry");
+            using(var restored=new QuotaLabel(""))Check(restored.SystemMode,"A new instance restores the saved System mode");
+            Click(view);Check(clicks==before,"System single click never requests quota");
+            var systemTimer=(System.Windows.Forms.Timer)typeof(QuotaLabel).GetField("systemTimer",BindingFlags.Instance|BindingFlags.NonPublic).GetValue(view);
+            Check(systemTimer.Enabled,"System mode samples while visible");
+            var systemTick=typeof(System.Windows.Forms.Timer).GetMethod("OnTick",BindingFlags.Instance|BindingFlags.NonPublic);
+            background=Color.White;systemTick.Invoke(systemTimer,new object[]{EventArgs.Empty});
+            Check(view.UsesBlackText,"System refresh switches low-opacity ink to black on a light desktop");
+            background=Color.Black;systemTick.Invoke(systemTimer,new object[]{EventArgs.Empty});
+            Check(!view.UsesBlackText,"System refresh switches low-opacity ink to white on a dark desktop");
+            background=null;systemTick.Invoke(systemTimer,new object[]{EventArgs.Empty});
+            Check(!view.UsesBlackText,"Failed system background capture preserves the last ink choice");
+            view.SetBubbleVisible(false);Check(!systemTimer.Enabled,"Hiding stops system sampling");
+            int hiddenReads=backgroundReads;systemTick.Invoke(systemTimer,new object[]{EventArgs.Empty});
+            Check(backgroundReads==hiddenReads,"Hidden system refresh never captures the desktop");
+            feature.Restore();Check(view.SystemMode && systemTimer.Enabled,"Restore retains mode and resumes sampling");
+            view.SetMode(false);Check(!systemTimer.Enabled && view.Handle==hwnd,"Returning to Quota stops sampling and reuses window");
+            Check(Text(view,"value1")==amount,"Switching preserves latest quota snapshot");
+            var quotaOption=(ToolStripMenuItem)feature.FeatureOptions[0];
+            var systemOption=(ToolStripMenuItem)feature.FeatureOptions[1];
+            var refresh=(ToolStripMenuItem)feature.Commands[feature.Commands.Length-1];
+            var switchMode=(ToolStripMenuItem)view.Commands[2];
+            Check(view.ShowBubbleCommand.Text=="Show Bubble" && refresh.Text=="Refresh","Tray actions use stable mode-independent labels");
+            quotaOption.PerformClick();
+            Check(!view.QuotaEnabled && view.SystemEnabled && view.SystemMode && !quotaOption.Checked && systemOption.Checked,"Disabling active Quota selects System and updates checkmarks");
+            Check(typeof(QuotaFeature).GetField("quota",BindingFlags.Instance|BindingFlags.NonPublic).GetValue(feature)==null,"Disabling Quota releases its polling service");
+            Check(!switchMode.Available && !switchMode.Enabled,"Single enabled mode removes the switch command");
+            int callsBeforeSystemRefresh=source.Calls,readsBeforeSystemRefresh=backgroundReads;
+            background=Color.White;refresh.PerformClick();
+            Check(source.Calls==callsBeforeSystemRefresh && backgroundReads==readsBeforeSystemRefresh+1 && view.UsesBlackText,"System tray refresh updates background without querying quota");
+            SendMessage(hwnd,0x201,new IntPtr(1),point);SendMessage(hwnd,0x202,IntPtr.Zero,point);
+            SendMessage(hwnd,0x203,new IntPtr(1),point);SendMessage(hwnd,0x202,IntPtr.Zero,point);FlushClick();
+            Check(view.SystemMode && source.Calls==callsBeforeSystemRefresh,"Double-click cannot enter a disabled quota mode");
+            systemOption.PerformClick();
+            Check(!view.Visible && !systemTimer.Enabled && !view.ShowBubbleCommand.Enabled && !refresh.Enabled,"Both disabled hide the bubble, stop sampling and disable actions");
+            feature.Restore();Check(!view.Visible && !view.AnyModeEnabled,"Restore respects disabled features");
+            using(var restored=new QuotaLabel(""))Check(!restored.QuotaEnabled && !restored.SystemEnabled,"Both disabled flags survive a new instance");
+            systemOption.PerformClick();
+            Check(view.Visible && view.SystemMode && systemTimer.Enabled && refresh.Enabled,"Re-enabling System restores the retained visible bubble and sampling");
+            quotaOption.PerformClick();
+            Check(view.SystemMode && switchMode.Available && quotaOption.Checked,"Enabling another mode does not steal the current display");
+            Check(source.Entered.WaitOne(5000),"Re-enabling Quota starts polling again");drain();
+            systemOption.PerformClick();
+            Check(!view.SystemMode && !systemTimer.Enabled,"Disabling active System falls back to Quota and stops sampling");
+            view.SetMode(true);Check(!view.SystemMode,"Disabled System cannot be selected programmatically");
+            systemOption.PerformClick();
+            Check(!view.SystemMode && view.QuotaEnabled && view.SystemEnabled,"Re-enable preserves Quota selection and restores both defaults");
+            var appearance=(ToolStripMenuItem)view.Commands[0];
+            var defaultItem=(ToolStripMenuItem)appearance.DropDownItems[0];
+            var petItem=(ToolStripMenuItem)appearance.DropDownItems[1];
+            var opacity=(ToolStripMenuItem)appearance.DropDownItems[3];
+            var colourField=typeof(QuotaLabel).GetField("panelColor",BindingFlags.Instance|BindingFlags.NonPublic);
+            var appearanceTimer=(System.Windows.Forms.Timer)typeof(QuotaLabel).GetField("appearanceTimer",BindingFlags.Instance|BindingFlags.NonPublic).GetValue(view);
+            bool? darkTheme=false;view.ReadSystemDark=()=>darkTheme;
+            defaultItem.PerformClick();
+            var glass=view.Owner as GlassBackdrop;
+            if(glass!=null)Check(!glass.BlurEnabled,"Default removes background blur from composition");
+            Check(appearance.Text=="Appearance" && defaultItem.Checked && !petItem.Checked && !opacity.Enabled,"Default selection checks one appearance and locks opacity");
+            Check((Color)colourField.GetValue(view)==Color.FromArgb(230,255,255,255),"Light Default uses native white at fixed E6 alpha");
+            typeof(QuotaLabel).GetMethod("SetOpacity",BindingFlags.Instance|BindingFlags.NonPublic).Invoke(view,new object[]{100});
+            Check(((Color)colourField.GetValue(view)).A==230,"Default ignores direct opacity changes");
+            darkTheme=true;systemTick.Invoke(appearanceTimer,new object[]{EventArgs.Empty});
+            Check((Color)colourField.GetValue(view)==Color.FromArgb(230,32,32,32),"Theme observation switches Default to the native dark surface");
+            darkTheme=null;view.RefreshSystemAppearance();
+            Check((Color)colourField.GetValue(view)==Color.FromArgb(230,32,32,32),"Theme read failure retains the current palette");
+            view.UpdatePet(new PetState(new IntPtr(1),new Point(600,400),112,true,true,false,"new-pet",Color.CornflowerBlue));
+            Check((Color)colourField.GetValue(view)==Color.FromArgb(230,32,32,32),"Pet changes cannot recolour Default");
+            int defaultReads=backgroundReads;view.SetMode(true);view.RefreshCurrent();
+            Check(backgroundReads==defaultReads,"Default never uses desktop sampling to change text colours");
+            using(var restored=new QuotaLabel(""))Check(restored.DefaultAppearance,"Default appearance survives restart");
+            petItem.PerformClick();
+            if(glass!=null)Check(glass.BlurEnabled,"Pet colour restores background blur");
+            Check(opacity.Enabled && petItem.Checked && !defaultItem.Checked && !appearanceTimer.Enabled,"Pet colour unlocks opacity and stops theme observation");
+            Check((Color)colourField.GetValue(view)==Color.FromArgb(51,Color.CornflowerBlue),"Returning to Pet colour restores 20 percent with the latest pet colour");
+            using(var restored=new QuotaLabel(""))Check(!restored.DefaultAppearance,"Pet appearance survives restart");
+            var frosted=(ToolStripMenuItem)appearance.DropDownItems[4];
+            Check(frosted.Checked && view.FrostedGlass,"Pet colour starts with frosted glass enabled");
+            frosted.PerformClick();
+            Check(!frosted.Checked && !view.FrostedGlass && (glass==null || !glass.BlurEnabled),"Frosted glass can be disabled from the menu");
+            defaultItem.PerformClick();
+            Check(!frosted.Checked,"Default retains its independent blur setting");
+            frosted.PerformClick();
+            Check(frosted.Checked && view.FrostedGlass && !opacity.Enabled,"Default can enable blur without unlocking opacity");
+            using(var restored=new QuotaLabel(""))Check(restored.DefaultAppearance && restored.FrostedGlass,"Default blur choice survives restart");
+            petItem.PerformClick();
+            Check(!frosted.Checked && !view.FrostedGlass,"Returning to Pet colour restores its disabled blur choice");
+            using(var restored=new QuotaLabel(""))Check(!restored.DefaultAppearance && !restored.FrostedGlass,"Pet blur choice survives restart");
+            frosted.PerformClick();defaultItem.PerformClick();frosted.PerformClick();petItem.PerformClick();
+            view.SetMode(false);
         }
         Console.WriteLine(checks+" bubble click checks passed");
     }
