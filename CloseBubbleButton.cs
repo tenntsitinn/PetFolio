@@ -12,13 +12,14 @@ sealed class CloseBubbleButton : Form {
     readonly Action dismiss;
     readonly ToolTip tooltip=new ToolTip();
     Color colour;
+    bool nativeAppearance,dark;
     bool pressed;
     internal CloseBubbleButton(Action handler) {
-        dismiss=handler;Text="Hide Quota Bubble";FormBorderStyle=FormBorderStyle.None;
+        dismiss=handler;Text="Hide bubble";FormBorderStyle=FormBorderStyle.None;
         ShowInTaskbar=false;TopMost=true;StartPosition=FormStartPosition.Manual;
         ClientSize=new Size(Diameter,Diameter);Cursor=Cursors.Hand;
-        AccessibleName="Hide Quota Bubble";AccessibleRole=AccessibleRole.PushButton;
-        tooltip.SetToolTip(this,"Hide Quota Bubble");
+        AccessibleName="Hide bubble";AccessibleRole=AccessibleRole.PushButton;
+        tooltip.SetToolTip(this,"Hide bubble");
     }
     protected override bool ShowWithoutActivation {get{return true;}}
     protected override CreateParams CreateParams {
@@ -28,8 +29,9 @@ sealed class CloseBubbleButton : Form {
         if(m.Msg==0x21){m.Result=new IntPtr(3);return;}
         base.WndProc(ref m);
     }
-    internal void SetColour(Color value) {
-        if(colour==value)return;colour=value;if(IsHandleCreated)Render();
+    internal void SetColour(Color value,bool native=false,bool isDark=false) {
+        if(colour==value && nativeAppearance==native && dark==isDark)return;
+        colour=value;nativeAppearance=native;dark=isDark;if(IsHandleCreated)Render();
     }
     internal void Follow(Point bubble,bool visible) {
         if(!visible){pressed=false;Capture=false;if(Visible)Hide();return;}
@@ -53,7 +55,7 @@ sealed class CloseBubbleButton : Form {
     static bool Inside(Point p) {double x=p.X-10,y=p.Y-10;return x*x+y*y<=100;}
     internal static bool Hovered(Point pointer,Rectangle bubble,bool buttonVisible) {
         if(bubble.Contains(pointer)) {
-            double radius=Math.Min(32,Math.Min(bubble.Width,bubble.Height)/2.0);
+            double radius=Math.Min(BubbleLayout.Radius,Math.Min(bubble.Width,bubble.Height)/2.0);
             double dx=Math.Max(0,Math.Abs(pointer.X-bubble.Left-bubble.Width/2.0)-(bubble.Width/2.0-radius));
             double dy=Math.Max(0,Math.Abs(pointer.Y-bubble.Top-bubble.Height/2.0)-(bubble.Height/2.0-radius));
             if(dx*dx+dy*dy<=radius*radius)return true;
@@ -64,14 +66,17 @@ sealed class CloseBubbleButton : Form {
     protected override void OnPaintBackground(PaintEventArgs e) { }
     protected override void OnPaint(PaintEventArgs e) {Render();}
     protected override void OnHandleCreated(EventArgs e) {base.OnHandleCreated(e);Render();}
-    internal static Bitmap Frame(Color fill) {
+    internal static Bitmap Frame(Color fill,bool native=false,bool dark=false) {
         var frame=new Bitmap(Diameter,Diameter,PixelFormat.Format32bppPArgb);
         using(var g=Graphics.FromImage(frame)) {
             g.Clear(Color.Transparent);g.SmoothingMode=SmoothingMode.AntiAlias;
             using(var brush=new SolidBrush(fill))g.FillEllipse(brush,0,0,Diameter,Diameter);
-            using(var outline=new Pen(PetTheme.Outline(fill),1f))
+            if(native)using(var shape=new GraphicsPath()) {
+                shape.AddEllipse(.5f,.5f,Diameter-1,Diameter-1);
+                BubbleAppearance.DrawEdge(g,shape,new RectangleF(0,0,Diameter,Diameter),dark);
+            }else using(var outline=new Pen(PetTheme.Outline(fill),1f))
                 g.DrawEllipse(outline,.5f,.5f,Diameter-1,Diameter-1);
-            Color text=PetTheme.Text(fill);
+            Color text=native?BubbleAppearance.Text(dark):PetTheme.Text(fill);
             using(var pen=new Pen(text,1.5f)) {
                 pen.StartCap=pen.EndCap=LineCap.Round;
                 g.DrawLine(pen,6.5f,6.5f,13.5f,13.5f);g.DrawLine(pen,13.5f,6.5f,6.5f,13.5f);
@@ -81,7 +86,7 @@ sealed class CloseBubbleButton : Form {
     }
     void Render() {
         if(!IsHandleCreated || IsDisposed)return;
-        using(var bitmap=Frame(colour)) {
+        using(var bitmap=Frame(colour,nativeAppearance,dark)) {
             var screen=Native.GetDC(IntPtr.Zero);var dc=Native.CreateCompatibleDC(screen);
             var h=bitmap.GetHbitmap(Color.FromArgb(0));var previous=Native.SelectObject(dc,h);
             try {

@@ -2,7 +2,7 @@ using System;
 using System.Drawing;
 using System.Runtime.InteropServices;
 
-// One small, in-memory capture per accepted quota refresh. Sample blank margins
+// One small, in-memory capture per quota refresh or low-opacity system refresh. Sample blank margins
 // rather than glyphs, and undo the tint to estimate the blurred desktop beneath.
 static class BubbleBackdrop {
     internal static Color? Capture(Rectangle bounds,Color tint) {
@@ -31,7 +31,7 @@ static class BubbleBackdrop {
         // Fully opaque glass provides no information about the desktop below it.
         if(image.Width<190 || image.Height<96 || tint.A==255)return null;
         Color brightest=Color.Black;double maximum=-1;
-        foreach(int x in new[]{16,173})foreach(int y in new[]{32,52,72}) {
+        foreach(int x in new[]{16,image.Width-17})foreach(int y in new[]{32,52,72}) {
             int r=0,g=0,b=0;
             for(int dy=-1;dy<=1;dy++)for(int dx=-1;dx<=1;dx++) {
                 var c=image.GetPixel(x+dx,y+dy);r+=c.R;g+=c.G;b+=c.B;

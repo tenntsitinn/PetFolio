@@ -6,6 +6,7 @@ interface ICompanionFeature : IDisposable {
     string Name { get; }
     bool IsRunning { get; }
     ToolStripItem[] Commands { get; }
+    ToolStripItem[] FeatureOptions { get; }
     void Start();
     void Stop();
     void Restore();

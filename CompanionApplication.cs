@@ -11,9 +11,9 @@ sealed class CompanionApplication : ApplicationContext {
     readonly Control dispatcher = new Control();
     readonly NotifyIcon tray = new NotifyIcon();
     readonly ContextMenuStrip menu = new ContextMenuStrip();
+    readonly TrayMenuStyle menuStyle;
     readonly System.Windows.Forms.Timer signals = new System.Windows.Forms.Timer();
     readonly List<ICompanionFeature> features = new List<ICompanionFeature>();
-    readonly Dictionary<ICompanionFeature, ToolStripMenuItem> toggles = new Dictionary<ICompanionFeature, ToolStripMenuItem>();
     readonly ToolStripMenuItem featureMenu = new ToolStripMenuItem("Features");
     readonly ToolStripMenuItem exit;
     readonly ToolStripMenuItem autoStart = new ToolStripMenuItem("Start when Codex opens");
@@ -22,6 +22,7 @@ sealed class CompanionApplication : ApplicationContext {
     Icon applicationIcon;
     volatile bool disposed;
     public CompanionApplication(string executable,string home,EventWaitHandle stop,EventWaitHandle show) {
+        menuStyle=new TrayMenuStyle(home);
         exit=new ToolStripMenuItem("Exit",null,(s,e)=>{CodexAutoStart.Suppress(Program.DataFolder);ExitThread();});
         autoStart.Checked=CodexAutoStart.Enabled(Program.DataFolder);
         autoStart.Click+=(s,e)=> {
@@ -38,6 +39,9 @@ sealed class CompanionApplication : ApplicationContext {
                 snapshot=>File.WriteAllText(Path.Combine(Program.DataFolder,"quota-snapshot.json"),
                     new JavaScriptSerializer().Serialize(snapshot.ToRecord())),Program.Record);
             Register(quota);
+            menu.Opening+=(s,e)=>quota.SetTrayMenuOpen(true);
+            // Resume after ToolStrip finishes closing its entire popup chain.
+            menu.Closed+=(s,e)=>Dispatch(()=>quota.SetTrayMenuOpen(menu.Visible));
             pets.Start();quota.Start();RebuildMenu();
             using(var stream=typeof(CompanionApplication).Assembly.GetManifestResourceStream("PetFolio.Icon"))
             using(var embeddedIcon=new Icon(stream,32,32))applicationIcon=(Icon)embeddedIcon.Clone();
@@ -67,24 +71,15 @@ sealed class CompanionApplication : ApplicationContext {
     // Add future in-process features here through the same lifecycle contract.
     void Register(ICompanionFeature feature) {
         features.Add(feature);
-        var toggle=new ToolStripMenuItem(feature.Name);
-        toggle.Click+=(s,e)=> {
-            try {if(feature.IsRunning)feature.Stop();else feature.Start();}
-            catch(Exception ex) {
-                Program.Record("feature-error",new {feature=feature.Name,error=ex.GetType().Name});
-                tray.ShowBalloonTip(5000,feature.Name,"Unable to start this feature.",ToolTipIcon.Error);
-            }
-            RebuildMenu();
-        };
-        toggles.Add(feature,toggle);featureMenu.DropDownItems.Add(toggle);
+        featureMenu.DropDownItems.AddRange(feature.FeatureOptions);
     }
     void RebuildMenu() {
         menu.Items.Clear();
         foreach(var feature in features) {
-            toggles[feature].Checked=feature.IsRunning;
             if(feature.IsRunning)menu.Items.AddRange(feature.Commands);
         }
         menu.Items.Add(separator);menu.Items.Add(featureMenu);menu.Items.Add(autoStart);menu.Items.Add(exit);
+        menuStyle.Apply(menu);
     }
     void Release() {
         if(disposed)return;disposed=true;
@@ -92,6 +87,7 @@ sealed class CompanionApplication : ApplicationContext {
         for(int i=features.Count-1;i>=0;i--)features[i].Dispose();
         if(pets!=null)pets.Dispose();
         tray.Visible=false;tray.Dispose();menu.Dispose();
+        menuStyle.Dispose();
         if(applicationIcon!=null)applicationIcon.Dispose();
         featureMenu.Dispose();separator.Dispose();autoStart.Dispose();exit.Dispose();dispatcher.Dispose();
         Program.Record("stopped",new { });

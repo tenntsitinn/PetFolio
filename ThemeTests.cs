@@ -7,7 +7,7 @@ class ThemeTests {
    Color bg=PetTheme.Background(c);
    Require(bg.R==c.R && bg.G==c.G && bg.B==c.B && bg.A==230,"Only alpha may change: "+c);
    Require(PetTheme.Contrast(bg,PetTheme.Text(bg))>=4.5,"Primary contrast: "+c);
-   Require(PetTheme.Text(bg).A==255 && PetTheme.Secondary(bg).A==230,"Primary alpha 1 and secondary alpha approximately .9: "+c);
+   Require(PetTheme.Text(bg).A==255 && PetTheme.Secondary(bg).A==204,"Primary alpha 1 and secondary alpha .8: "+c);
    Require(PetTheme.RenderedContrast(bg,PetTheme.Secondary(bg))<PetTheme.Contrast(bg,PetTheme.Text(bg)),"Secondary ink is softer after compositing: "+c);
   }
   Color translucentDark=Color.FromArgb(51,35,30,48);
@@ -17,18 +17,18 @@ class ThemeTests {
    Require(PetTheme.Text(Color.FromArgb(alpha,35,30,48),Color.Black).ToArgb()==Color.White.ToArgb(),"Dark desktop retains white text: "+percent);
    Require(PetTheme.Text(Color.FromArgb(alpha,240,220,100),Color.White).ToArgb()==PetTheme.Text(Color.FromArgb(alpha,240,220,100)).ToArgb(),"Light tint keeps existing text: "+percent);
    Require((PetTheme.Text(Color.FromArgb(alpha,240,220,100),Color.Black).ToArgb()==Color.White.ToArgb())==(percent==10 || percent==20),"Light tint switches to white on dark desktop only at 10% and 20%: "+percent);
-   Require(PetTheme.Secondary(Color.FromArgb(alpha,240,220,100),Color.Black).A==230,"Light tint secondary ink retains .9 alpha: "+percent);
+   Require(PetTheme.Secondary(Color.FromArgb(alpha,240,220,100),Color.Black).A==204,"Light tint secondary ink retains .8 alpha: "+percent);
   }
   Require(PetTheme.Text(translucentDark,null).ToArgb()==Color.White.ToArgb(),"Unknown desktop retains the original colour");
   Require(PetTheme.Text(Color.FromArgb(51,240,220,100),null).ToArgb()==Color.Black.ToArgb(),"Unknown desktop retains original light-tint text");
-  Require(PetTheme.Secondary(Color.FromArgb(51,240,220,100),Color.Black).ToArgb()==Color.FromArgb(230,Color.White).ToArgb(),"Updated time uses white at .9 alpha for light tint on dark desktop");
-  Require(PetTheme.Secondary(translucentDark,Color.White).ToArgb()==Color.FromArgb(230,Color.Black).ToArgb(),"Updated time uses black at .9 alpha on light desktop");
+  Require(PetTheme.Secondary(Color.FromArgb(51,240,220,100),Color.Black).ToArgb()==Color.FromArgb(204,Color.White).ToArgb(),"Updated time uses white at .8 alpha for light tint on dark desktop");
+  Require(PetTheme.Secondary(translucentDark,Color.White).ToArgb()==Color.FromArgb(204,Color.Black).ToArgb(),"Updated time uses black at .8 alpha on light desktop");
   foreach(Color desktop in new[]{Color.White,Color.Black,Color.FromArgb(150,150,150)}) {
    var surface=PetTheme.Mix(desktop,translucentDark,translucentDark.A/255.0);
    var primary=PetTheme.Text(translucentDark,desktop);var secondary=PetTheme.Secondary(translucentDark,desktop);
-   Require(primary.A==255 && secondary.A==230 && primary.R==secondary.R && primary.G==secondary.G && primary.B==secondary.B,"Depth is distinguished by alpha rather than different RGB");
-   Require(Math.Abs(PetTheme.RenderedContrast(surface,secondary)-PetTheme.Contrast(surface,PetTheme.Mix(surface,secondary,230/255.0)))<.000001,"Secondary contrast includes alpha blending");
-   var alternative=Color.FromArgb(230,primary.R==0?Color.White:Color.Black);
+   Require(primary.A==255 && secondary.A==204 && primary.R==secondary.R && primary.G==secondary.G && primary.B==secondary.B,"Depth is distinguished by alpha rather than different RGB");
+   Require(Math.Abs(PetTheme.RenderedContrast(surface,secondary)-PetTheme.Contrast(surface,PetTheme.Mix(surface,secondary,204/255.0)))<.000001,"Secondary contrast includes alpha blending");
+   var alternative=Color.FromArgb(204,primary.R==0?Color.White:Color.Black);
    Require(PetTheme.RenderedContrast(surface,secondary)>=PetTheme.RenderedContrast(surface,alternative),"Select the higher contrast ink after alpha blending");
   }
   foreach(Color desktop in new [] {Color.White,Color.Black})using(var b=new Bitmap(180,40)) {
@@ -61,6 +61,14 @@ class ThemeTests {
    var found=PetTheme.Dominant(b,new Rectangle(0,0,b.Width,b.Height));
    Require(found.HasValue,"Real pet crop must yield a colour");
    Console.WriteLine(System.IO.Path.GetFileName(file)+": "+ColorTranslator.ToHtml(found.Value));
+  }
+  foreach(var tint in new[]{Color.Gold,Color.Purple,Color.FromArgb(27,31,38),Color.White})
+  foreach(var desktop in new[]{Color.Black,Color.White})
+  foreach(int alpha in new[]{26,51,76,230,255}) {
+   var panel=Color.FromArgb(alpha,tint);
+   var surface=PetTheme.Mix(desktop,panel,alpha/255.0);
+   var accent=PetTheme.ProgressAccent(panel,desktop);
+   Require(PetTheme.RenderedContrast(surface,Color.FromArgb(217,accent))>=3,"Progress fill remains visible across pet colours and opacity");
   }
   Console.WriteLine("Theme checks passed");
  }

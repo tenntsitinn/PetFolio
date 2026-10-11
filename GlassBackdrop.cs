@@ -7,7 +7,7 @@ using System.Windows.Forms;
 using Windows.UI.Composition;
 
 // A separate compositor surface below the existing per-pixel label.
-// Background sampling, GPU blur and the antialiased 32px clip share one visual tree.
+// Background sampling, GPU blur and the foreground clip share one geometry.
 sealed class GlassBackdrop : Form {
     ShadowBackdrop shadow;
     readonly string home;
@@ -19,13 +19,17 @@ sealed class GlassBackdrop : Form {
     Compositor compositor;
     CompositionEffectBrush blurBrush;
     CompositionBackdropBrush backdropSource;
+    SpriteVisual backdropVisual;
     Color tint=Color.FromArgb(178,239,200,78);
+    bool nativeAppearance;
+    bool blurEnabled=true;
     readonly System.Collections.Generic.List<IDisposable> resources=new System.Collections.Generic.List<IDisposable>();
     public bool Ready {get;private set;}
+    internal bool BlurEnabled {get{return backdropVisual!=null && backdropVisual.Opacity>0;}}
     public GlassBackdrop(string dataDirectory) {
         home=dataDirectory;
         Text="Pet quota glass";FormBorderStyle=FormBorderStyle.None;ShowInTaskbar=false;TopMost=true;
-        ClientSize=new Size(190,96);StartPosition=FormStartPosition.Manual;
+        ClientSize=new Size(BubbleLayout.Width,BubbleLayout.Height);StartPosition=FormStartPosition.Manual;
     }
     T Keep<T>(T value) {var disposable=value as IDisposable;if(disposable!=null)resources.Add(disposable);return value;}
     protected override bool ShowWithoutActivation {get{return true;}}
@@ -55,18 +59,19 @@ sealed class GlassBackdrop : Form {
             // Applying a material to the foreground UpdateLayeredWindow surface caused the old white rectangle.
             SetBackdropMode(5);
             var root=Keep(compositor.CreateContainerVisual());root.Size=new Vector2(Width,Height);
-            var geometry=Keep(compositor.CreateRoundedRectangleGeometry());geometry.Size=root.Size;geometry.CornerRadius=new Vector2(32,32);
+            var geometry=Keep(compositor.CreateRoundedRectangleGeometry());geometry.Size=root.Size;geometry.CornerRadius=new Vector2(BubbleLayout.Radius,BubbleLayout.Radius);
             root.Clip=Keep(compositor.CreateGeometricClip(geometry));
             var factory=Keep(compositor.CreateEffectFactory(new BackdropGaussian {Name="GlassBlur"}));
             blurBrush=Keep(factory.CreateBrush());
             backdropSource=compositor.CreateBackdropBrush();blurBrush.SetSourceParameter("Backdrop",backdropSource);
-            var backdrop=Keep(compositor.CreateSpriteVisual());backdrop.Size=root.Size;backdrop.Brush=blurBrush;
-            root.Children.InsertAtBottom(backdrop);
+            backdropVisual=Keep(compositor.CreateSpriteVisual());backdropVisual.Size=root.Size;backdropVisual.Brush=blurBrush;
+            backdropVisual.Opacity=blurEnabled?1:0;
+            root.Children.InsertAtBottom(backdropVisual);
             tintBrush=Keep(compositor.CreateColorBrush(Windows.UI.Color.FromArgb(tint.A,tint.R,tint.G,tint.B)));
             var colourLayer=Keep(compositor.CreateSpriteVisual());colourLayer.Size=root.Size;colourLayer.Brush=tintBrush;
             root.Children.InsertAtTop(colourLayer);compositionTarget.Root=root;
             Ready=true;
-            Program.Record("backdrop-blur",new {enabled=true,mode="Composition Gaussian blur",sigma=10,cornerRadius=32});
+            Program.Record("backdrop-blur",new {enabled=true,mode="Composition Gaussian blur",sigma=10,cornerRadius=BubbleLayout.Radius});
         }catch(Exception ex) {
             Ready=false;Program.Record("backdrop-blur",new {enabled=false,reason=ex.GetType().Name,hresult=ex.HResult});
         }
@@ -92,7 +97,7 @@ sealed class GlassBackdrop : Form {
     }
     public void Follow(Point position,bool visible) {
         if(!visible || !Ready){if(Visible)Hide();if(shadow!=null)shadow.Follow(position,false);return;}
-        if(shadow!=null)shadow.Follow(position,true);
+        if(shadow!=null)shadow.Follow(position,!nativeAppearance);
         if(Location!=position || !Visible)
             Native.SetWindowPos(Handle,new IntPtr(-1),position.X,position.Y,0,0,0x0010|0x0001);
         if(!Visible)Show();
@@ -101,6 +106,15 @@ sealed class GlassBackdrop : Form {
         tint=colour;
         if(tintBrush!=null)tintBrush.Color=Windows.UI.Color.FromArgb(colour.A,colour.R,colour.G,colour.B);
     }
+    internal void SetNativeAppearance(bool enabled) {
+        if(nativeAppearance==enabled)return;
+        nativeAppearance=enabled;
+        if(shadow!=null)shadow.Follow(Location,Visible && !enabled);
+    }
+    internal void SetBlurEnabled(bool enabled) {
+        blurEnabled=enabled;
+        if(backdropVisual!=null)backdropVisual.Opacity=enabled?1:0;
+    }
     protected override void Dispose(bool disposing) {
         if(disposing) {
             Owner=null;if(shadow!=null){shadow.Close();shadow.Dispose();shadow=null;}
@@ -108,7 +122,7 @@ sealed class GlassBackdrop : Form {
             if(backdropSource!=null){backdropSource.Dispose();backdropSource=null;}
             for(int i=resources.Count-1;i>=0;i--)resources[i].Dispose();resources.Clear();
             tintBrush=null;
-            compositor=null;blurBrush=null;
+            compositor=null;blurBrush=null;backdropVisual=null;
             // The shared dispatcher controller is retained until UI-thread/process shutdown.
         }
         base.Dispose(disposing);

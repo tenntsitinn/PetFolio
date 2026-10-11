@@ -28,7 +28,7 @@ static class FeatureLifecycleTests {
             Check(!feature.IsRunning && pets.Subscribers==0,"Construction owns no live feature resources");
             feature.Start();feature.Start();
             Check(posted.WaitOne(5000),"Quota request completes without depending on a visible view");
-            Check(sources.Count==1 && pets.Subscribers==1 && feature.Commands.Length==3,"Start is idempotent and registers one subscriber");
+            Check(sources.Count==1 && pets.Subscribers==1 && feature.Commands.Length==4,"Start is idempotent and registers one subscriber");
             var first=feature.View;var firstButton=first.DismissButton;
             bool glassAvailable=first.Owner is GlassBackdrop && ((GlassBackdrop)first.Owner).Ready;
             feature.View.SetBubbleVisible(false);pets.Tick();

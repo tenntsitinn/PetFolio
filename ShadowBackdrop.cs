@@ -7,9 +7,9 @@ using System.Windows.Forms;
 using Microsoft.Win32;
 
 // CSS-equivalent outer shadow: 0 3px 16px, black alpha .20 (light) / .35 (dark).
-// A separate per-pixel surface leaves room outside the 190x96 glass panel.
+// A separate per-pixel surface leaves room outside the glass panel.
 sealed class ShadowBackdrop : Form {
-    const int ShadowPadding=24,PanelWidth=190,PanelHeight=96;
+    const int ShadowPadding=24,PanelWidth=BubbleLayout.Width,PanelHeight=BubbleLayout.Height;
     readonly Bitmap pixels;
     public ShadowBackdrop(string home) {
         Text="Pet quota shadow";FormBorderStyle=FormBorderStyle.None;ShowInTaskbar=false;TopMost=true;
@@ -32,9 +32,9 @@ sealed class ShadowBackdrop : Form {
     }
     // Analytic antialiasing of a rounded rectangle; shift applies only to the shadow source.
     static double Coverage(double x,double y,double offsetY) {
-        double dx=Math.Abs(x-PanelWidth/2.0)-(PanelWidth/2.0-32);
-        double dy=Math.Abs(y-offsetY-PanelHeight/2.0)-(PanelHeight/2.0-32);
-        double d=Math.Sqrt(Math.Max(0,dx)*Math.Max(0,dx)+Math.Max(0,dy)*Math.Max(0,dy))+Math.Min(Math.Max(dx,dy),0)-32;
+        double dx=Math.Abs(x-PanelWidth/2.0)-(PanelWidth/2.0-BubbleLayout.Radius);
+        double dy=Math.Abs(y-offsetY-PanelHeight/2.0)-(PanelHeight/2.0-BubbleLayout.Radius);
+        double d=Math.Sqrt(Math.Max(0,dx)*Math.Max(0,dx)+Math.Max(0,dy)*Math.Max(0,dy))+Math.Min(Math.Max(dx,dy),0)-BubbleLayout.Radius;
         return Math.Max(0,Math.Min(1,.5-d));
     }
     static Bitmap Build(int opacity) {

@@ -1,6 +1,6 @@
 {
   "name": "petfolio",
-  "version": "1.2.2",
+  "version": "1.3.0",
   "description": "Start, stop, and diagnose the PetFolio Windows desktop companion and its Codex Pet quota bubble.",
   "skills": "./skills/",
   "interface": {
