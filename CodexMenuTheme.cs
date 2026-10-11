@@ -15,7 +15,9 @@ static class CodexMenuTheme {
                     return systemDark();
                 }
             }
-            return systemDark();
+            // Missing Codex configuration is not a request to follow Windows.
+            // Let the caller retain the last confirmed Codex palette.
+            return null;
         }catch(IOException){return null;}
         catch(UnauthorizedAccessException){return null;}
         catch(System.Security.SecurityException){return null;}

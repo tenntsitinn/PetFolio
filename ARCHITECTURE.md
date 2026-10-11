@@ -50,11 +50,13 @@ System Bubble 是同一视图的第二种显示模式，未注册第二个 featu
 
 托盘菜单由 `TrayMenuStyle` 统一展示：使用 Windows `SystemFonts.MenuFont`，主菜单及子菜单采用 8px 圆角、4px 内边距和 28px 行高（按 DPI 缩放），统一文字、勾选和子菜单箭头列。样式复用原有 ToolStrip 项目，不修改命令、启用状态或事件处理。
 
-菜单颜色跟随 Codex home 下 `config.toml` 的 `appearanceTheme`：dark / light 优先于系统，system 或缺省时读取 Windows 应用主题。打开菜单立即检查，并每两秒同步所有已创建子菜单；读取失败保留上次主题。深浅色分别设置底色、文字、禁用项、分隔线、勾选、箭头及悬停色，不影响气泡的外观选择。
+菜单颜色跟随 Codex home 下 `config.toml` 的 `appearanceTheme`：dark / light 优先于系统，Codex 明确选择 system 时解析其 Windows 应用主题；配置缺失或无效时保留上次 Codex 配色。打开菜单立即检查，并每两秒同步所有已创建子菜单；读取失败保留上次主题。深浅色分别设置底色、文字、禁用项、分隔线、勾选、箭头及悬停色，不影响气泡的外观选择。
 
 托盘根菜单打开时，宿主通知气泡暂停悬停关闭按钮、窗口跟随和桌面取色，保留最新宠物状态及数据刷新。避免关闭按钮窗口 Show 触发 ToolStrip 的 AppFocusChange，或气泡重新置顶遮住菜单。根菜单关闭后通过 UI 队列恢复，确保所有子菜单已退出；`TrayOverlapTests` 使用真实菜单与层叠气泡重复验证重叠、子菜单及恢复行为。
 
-外观与内容模式独立：`appearanceMode` 保存 `default / pet`，缺省为 Default。`BubbleAppearance` 保存客户端 26.1007 的浅色 `#ffffffe6` / 深色 `#202020e6`、文字与描边令牌；固定 alpha 230，使用中性灰进度条和内侧高光。Default 是半透明底色，不模糊桌面；GlassBackdrop 将 Gaussian 背景层的 Opacity 设为 0，切回 Pet colour 恢复为 1。Default 不使用桌面采样或宠物颜色，不显示旧模式的外阴影。通过 Windows 设置/主题消息及两秒补偿检查读取 `AppsUseLightTheme`，读取失败保留现有主题。Pet colour 保留毛玻璃、`opacityPercent` 和低透明度黑白字适配；切换外观会清除旧桌面样本。外观计时器随视图释放，Pet colour 下停止。`BubbleMaterialTests` 用真实合成窗口上黑白条纹的像素对比验证材质切换。
+对其他应用的弹出面板，气泡及玻璃、阴影、关闭按钮的位置更新使用 `SWP_NOZORDER`，不反复提升置顶窗口的顺序。辅助窗口显示或隐藏前记录整组窗口的位置，操作后恢复层级并保留置顶属性；悬停还通过 `WindowFromPoint` 确认鼠标实际指向气泡或关闭按钮，避免隔着覆盖窗口唤出按钮。`BubbleZOrderTests` 使用独立置顶弹窗验证跟随、刷新、外观切换、输入归属与关闭后恢复。
+
+外观与内容模式独立：`appearanceMode` 保存 `default / pet`，缺省为 Default。`BubbleAppearance` 保存客户端 26.1007 的浅色 `#ffffffe6` / 深色 `#202020e6`、文字与描边令牌；固定 alpha 230，使用中性灰进度条和内侧高光。Default 是半透明底色，不模糊桌面；GlassBackdrop 将 Gaussian 背景层的 Opacity 设为 0，切回 Pet colour 恢复为 1。Default 不使用桌面采样或宠物颜色。Default 与 Pet colour 共用同一 ShadowBackdrop，阴影对齐原生 Status Bubble 的 0 3px 16px 黑色阴影：Codex 浅色 alpha 51（20%），深色 alpha 89（约 35%）；两种外观均随确认的 Codex 主题同步阴影强度，切换外观不隐藏阴影。主题复用 `CodexMenuTheme.Read`：Codex home 的 `appearanceTheme` dark / light 优先，仅在 Codex 明确选择 system 时读取 Windows `AppsUseLightTheme`；配置缺失、无效或读取失败时保留上次 Codex 配色，不自行采用 Windows 主题。初始化、选择 Default、单击／托盘 Refresh、Windows 设置／主题消息及每次实际 quota 查询开始时同步；自动同步沿用五分钟 quota 周期，不另设外观轮询计时器。额度查询失败不撤销已同步的主题，隐藏时仍同步但不显示窗口；System 模式手动刷新也同步。Pet colour 保留毛玻璃、`opacityPercent` 和低透明度黑白字适配；切换外观会清除旧桌面样本。`BubbleThemeTests` 使用实际配置文件、quota 计时器和单击处理验证深浅切换、失败保留及隐藏行为；`BubbleMaterialTests` 用真实合成窗口上黑白条纹的像素对比验证材质切换、两种外观的真实外阴影像素一致性、深浅主题强度及隐藏／恢复。
 
 ## 添加下一个功能
 

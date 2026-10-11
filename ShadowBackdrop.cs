@@ -1,34 +1,28 @@
 ﻿using System;
 using System.Drawing;
 using System.Drawing.Imaging;
-using System.IO;
 using System.Runtime.InteropServices;
 using System.Windows.Forms;
-using Microsoft.Win32;
 
 // CSS-equivalent outer shadow: 0 3px 16px, black alpha .20 (light) / .35 (dark).
 // A separate per-pixel surface leaves room outside the glass panel.
 sealed class ShadowBackdrop : Form {
     const int ShadowPadding=24,PanelWidth=BubbleLayout.Width,PanelHeight=BubbleLayout.Height;
-    readonly Bitmap pixels;
+    Bitmap pixels;
+    bool dark;
     public ShadowBackdrop(string home) {
         Text="Pet quota shadow";FormBorderStyle=FormBorderStyle.None;ShowInTaskbar=false;TopMost=true;
         ClientSize=new Size(PanelWidth+ShadowPadding*2,PanelHeight+ShadowPadding*2);StartPosition=FormStartPosition.Manual;
-        int alpha=IsDark(home)?89:51;
+        dark=CodexMenuTheme.Read(home,BubbleAppearance.ReadSystemDark) ?? false;
+        int alpha=dark?89:51;
         pixels=Build(alpha);
         Program.Record("panel-shadow",new {offsetX=0,offsetY=3,blur=16,alpha=alpha,padding=ShadowPadding});
     }
-    static bool IsDark(string home) {
-        string theme="system";
-        try {
-            foreach(var line in File.ReadLines(Path.Combine(home,"config.toml"))) {
-                if(!line.TrimStart().StartsWith("appearanceTheme"))continue;
-                var parts=line.Split('=');if(parts.Length==2)theme=parts[1].Trim().Trim('"');
-            }
-        }catch(IOException) { }
-        if(theme=="dark")return true;if(theme=="light")return false;
-        using(var key=Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize"))
-            return key!=null && Convert.ToInt32(key.GetValue("AppsUseLightTheme",1))==0;
+    internal void SetTheme(bool next) {
+        if(next==dark)return;
+        var replacement=Build(next?89:51);
+        var previous=pixels;pixels=replacement;dark=next;previous.Dispose();
+        if(IsHandleCreated)Render();
     }
     // Analytic antialiasing of a rounded rectangle; shift applies only to the shadow source.
     static double Coverage(double x,double y,double offsetY) {
@@ -64,6 +58,9 @@ sealed class ShadowBackdrop : Form {
     protected override void OnPaint(PaintEventArgs e) { }
     protected override void OnHandleCreated(EventArgs e) {
         base.OnHandleCreated(e);
+        Render();
+    }
+    void Render() {
         var screen=Native.GetDC(IntPtr.Zero);var dc=Native.CreateCompatibleDC(screen);
         var bitmap=pixels.GetHbitmap(Color.FromArgb(0));var previous=Native.SelectObject(dc,bitmap);
         try {
@@ -74,10 +71,10 @@ sealed class ShadowBackdrop : Form {
         }finally {Native.SelectObject(dc,previous);Native.DeleteObject(bitmap);Native.DeleteDC(dc);Native.ReleaseDC(IntPtr.Zero,screen);}
     }
     public void Follow(Point panel,bool visible) {
-        if(!visible){if(Visible)Hide();return;}
+        if(!visible){if(Visible)Native.HidePreservingOrder(this);return;}
         var position=new Point(panel.X-ShadowPadding,panel.Y-ShadowPadding);
-        if(Location!=position || !Visible)Native.SetWindowPos(Handle,new IntPtr(-1),position.X,position.Y,0,0,0x0010|0x0001);
-        if(!Visible)Show();
+        if(Location!=position || !Visible)Native.SetWindowPos(Handle,IntPtr.Zero,position.X,position.Y,0,0,0x0010|0x0001|0x0004);
+        if(!Visible)Native.ShowPreservingOrder(this);
     }
     protected override void Dispose(bool disposing){if(disposing)pixels.Dispose();base.Dispose(disposing);}
 }

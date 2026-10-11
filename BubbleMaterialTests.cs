@@ -18,7 +18,8 @@ static class BubbleMaterialTests {
             background.FormBorderStyle=FormBorderStyle.None;background.ShowInTaskbar=false;
             background.StartPosition=FormStartPosition.Manual;background.Location=new Point(675,325);background.ClientSize=new Size(260,150);
             background.Paint+=(s,e)=>{for(int x=0;x<260;x+=12)e.Graphics.FillRectangle((x/12)%2==0?Brushes.Black:Brushes.White,x,0,12,150);};
-            bubble.ReadSystemDark=()=>true;int stage=0;
+            int stage=0,darkShadow=0;
+            bubble.ReadCodexTheme=()=>stage!=2;
             Action present=()=>{
                 bubble.SetDefaultAppearance(stage!=1);
                 bubble.PreviewGlass(Color.FromArgb(230,32,32,32),new Point(700,350));
@@ -28,6 +29,17 @@ static class BubbleMaterialTests {
                 present();timer.Interval=700;timer.Start();
             };
             timer.Tick+=(s,e)=>{
+                var shadow=bubble.Owner.Owner;
+                Check(shadow.Visible,"Both appearances show the shared outer shadow");
+                Check(shadow.Location==new Point(bubble.Left-24,bubble.Top-24),"Shadow follows panel geometry");
+                using(var sample=new Bitmap(1,1)) {
+                    using(var g=Graphics.FromImage(sample))g.CopyFromScreen(bubble.Left+114,bubble.Bottom+6,0,0,sample.Size);
+                    int brightness=sample.GetPixel(0,0).R;
+                    Check(brightness<253 && brightness>150,"Real outer shadow darkens the desktop outside the panel");
+                    if(stage==0)darkShadow=brightness;
+                    else if(stage==1)Check(Math.Abs(brightness-darkShadow)<=2,"Default and Pet colour render the same dark shadow");
+                    else Check(brightness>darkShadow+2,"Codex light theme reduces shadow strength");
+                }
                 using(var image=new Bitmap(bubble.Width,bubble.Height)) {
                     using(var g=Graphics.FromImage(image))g.CopyFromScreen(bubble.Left,bubble.Top,0,0,image.Size);
                     int contrast=Math.Abs(image.GetPixel(66,75).R-image.GetPixel(78,75).R);
@@ -35,7 +47,11 @@ static class BubbleMaterialTests {
                     if(stage==1)Check(contrast<8,"Pet colour blurs desktop stripes");
                     else Check(contrast>=18,"Default preserves sharp desktop stripes at fixed alpha");
                 }
-                if(++stage<3)present();else{timer.Stop();background.Close();}
+                if(++stage<3)present();else{
+                    bubble.SetBubbleVisible(false);Check(!shadow.Visible,"Hiding Bubble also hides its shadow");
+                    bubble.SetBubbleVisible(true);Check(shadow.Visible,"Restoring Bubble restores its shadow");
+                    timer.Stop();background.Close();
+                }
             };
             Application.Run(background);
         }

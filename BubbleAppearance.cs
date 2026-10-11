@@ -6,6 +6,12 @@ using Microsoft.Win32;
 // Codex 26.1007 activity material: #ffffffe6 / #202020e6,
 // border token at 60%, with white inset highlights. Layout stays in BubbleLayout.
 static class BubbleAppearance {
+    // Native Status Bubble --text-primary / --text-secondary tokens.
+    // Solid RGB colours: Default text never inherits panel or pet-text alpha.
+    static readonly Color lightText=ColorTranslator.FromHtml("#0D0D0D");
+    static readonly Color darkText=ColorTranslator.FromHtml("#FFFFFF");
+    static readonly Color lightSecondary=ColorTranslator.FromHtml("#5D5D5D");
+    static readonly Color darkSecondary=ColorTranslator.FromHtml("#CDCDCD");
     internal static bool? ReadSystemDark() {
         try {
             using(var key=Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize"))
@@ -15,8 +21,8 @@ static class BubbleAppearance {
         catch(System.IO.IOException){return null;}
     }
     internal static Color Surface(bool dark) {return dark?Color.FromArgb(230,32,32,32):Color.FromArgb(230,255,255,255);}
-    internal static Color Text(bool dark) {return dark?Color.White:Color.FromArgb(13,13,13);}
-    internal static Color Secondary(bool dark) {return dark?Color.FromArgb(205,205,205):Color.FromArgb(93,93,93);}
+    internal static Color Text(bool dark) {return dark?darkText:lightText;}
+    internal static Color Secondary(bool dark) {return dark?darkSecondary:lightSecondary;}
     internal static Color Border(bool dark) {return Color.FromArgb(dark?23:16,dark?Color.White:Color.Black);}
     internal static void DrawEdge(Graphics g,GraphicsPath shape,RectangleF bounds,bool dark) {
         // Reproduce the shallow CSS inset highlights inside the rounded clip.

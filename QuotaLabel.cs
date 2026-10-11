@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
@@ -30,9 +30,9 @@ class QuotaLabel : Form {
     internal bool DefaultAppearance {get;private set;}
     bool defaultFrostedGlass,petFrostedGlass=true;
     internal bool FrostedGlass {get{return DefaultAppearance?defaultFrostedGlass:petFrostedGlass;}}
-    bool systemDark;
+    bool codexDark;
     internal Func<bool?> ReadSystemDark=BubbleAppearance.ReadSystemDark;
-    readonly System.Windows.Forms.Timer appearanceTimer=new System.Windows.Forms.Timer();
+    internal Func<bool?> ReadCodexTheme;
     Color? desktopBackground;
     internal Func<Rectangle,Color,Color?> ReadBackground=BubbleBackdrop.Capture;
     internal bool UsesBlackText {get{return PetTheme.Text(panelColor,desktopBackground).ToArgb()==Color.Black.ToArgb();}}
@@ -67,6 +67,7 @@ class QuotaLabel : Form {
     internal ToolStripItem[] Commands { get { return new ToolStripItem[] { appearanceMenu, showBubble, modeMenu }; } }
     public QuotaLabel(string data, bool diagnostic=false) {
         home = data; diagnosticMode=diagnostic;QuotaEnabled=SystemEnabled=true;DefaultAppearance=true;
+        ReadCodexTheme=()=>CodexMenuTheme.Read(home,ReadSystemDark);
         Text = "Quota Bubble"; FormBorderStyle = FormBorderStyle.None;
         ShowInTaskbar = false; TopMost = true; BackColor = Color.FromArgb(27, 31, 38);
         ForeColor = Color.FromArgb(232, 237, 244); Font = new Font("Segoe UI", 9);
@@ -95,8 +96,8 @@ class QuotaLabel : Form {
         placement=new PetPanelPlacement(preferredCorner);
         if(SystemMode && !SystemEnabled && QuotaEnabled)SystemMode=false;
         if(!SystemMode && !QuotaEnabled && SystemEnabled)SystemMode=true;
-        systemDark=ReadSystemDark() ?? false;
-        panelColor=DefaultAppearance?BubbleAppearance.Surface(systemDark):WithOpacity(petColour);
+        codexDark=ReadCodexTheme() ?? false;
+        panelColor=DefaultAppearance?BubbleAppearance.Surface(codexDark):WithOpacity(petColour);
         opacityMenu=new ToolStripMenuItem("Opacity");
         for(int percent=10;percent<=100;percent+=10) {
             var item=new ToolStripMenuItem(percent+"%");item.Tag=percent;
@@ -110,9 +111,6 @@ class QuotaLabel : Form {
         frostedGlass=new ToolStripMenuItem("Frosted glass",null,(s,e)=>SetFrostedGlass(!FrostedGlass));
         appearanceMenu.DropDownItems.AddRange(new ToolStripItem[]{defaultAppearance,petAppearance,new ToolStripSeparator(),opacityMenu,frostedGlass});
         UpdateAppearanceMenu();
-        appearanceTimer.Interval=2000;
-        appearanceTimer.Tick+=(s,e)=>RefreshSystemAppearance();
-        if(DefaultAppearance)appearanceTimer.Start();
         showBubble=new ToolStripMenuItem("Show Bubble",null,(s,e)=>SetBubbleVisible(true));
         showBubble.Enabled=false;
         modeMenu=new ToolStripMenuItem("Switch to System Bubble",null,(s,e)=>SetMode(!SystemMode));
@@ -122,7 +120,7 @@ class QuotaLabel : Form {
     protected override void Dispose(bool disposing) {
         if(disposing && !closing) {
             closing=true;
-            clickTimer.Dispose();systemTimer.Dispose();appearanceTimer.Dispose();systemSource=null;
+            clickTimer.Dispose();systemTimer.Dispose();systemSource=null;
             placement.Cancel();snap.Cancel();Capture=false;
             if(dismissButton!=null){dismissButton.Close();dismissButton.Dispose();dismissButton=null;}
             Owner=null;if(glass!=null){glass.Close();glass.Dispose();glass=null;}
@@ -137,7 +135,7 @@ class QuotaLabel : Form {
         petState=state;
         if(state.Colour.HasValue) {
             petColour=state.Colour.Value;
-            var next=DefaultAppearance?BubbleAppearance.Surface(systemDark):WithOpacity(petColour);
+            var next=DefaultAppearance?BubbleAppearance.Surface(codexDark):WithOpacity(petColour);
             if(next!=panelColor){panelColor=next;RenderFrame();}
         }
         Follow();
@@ -146,7 +144,7 @@ class QuotaLabel : Form {
         if(closing)return;
         // IsRefreshing is emitted once per accepted refresh, before the CLI
         // starts. Timer, tray and bubble clicks all pass through this path.
-        if(state.IsRefreshing)RefreshBackground();
+        if(state.IsRefreshing){RefreshCodexAppearance();RefreshBackground();}
         if(state.Snapshot!=null) {
             line1=WindowText(state.Snapshot.Primary,"Primary");
             line2=WindowText(state.Snapshot.Secondary,"Secondary");
@@ -174,7 +172,7 @@ class QuotaLabel : Form {
         panelColor=colour;line1="5h";line2="Week";value1="84%";value2="79%";quotaPercent1=84;quotaPercent2=79;status="updated 17:53";
         if(glass==null || !glass.Ready)throw new InvalidOperationException("Composition backdrop unavailable");
         glass.Follow(position,true);
-        Native.SetWindowPos(Handle,new IntPtr(-1),position.X,position.Y,0,0,0x0010|0x0001);
+        Native.SetWindowPos(Handle,IntPtr.Zero,position.X,position.Y,0,0,0x0010|0x0001|0x0004);
         RenderFrame();
         if(dismissButton!=null)dismissButton.Follow(position,false);
     }
@@ -192,8 +190,12 @@ class QuotaLabel : Form {
     }
     void UpdateDismissButton(Point position,Point pointer) {
         if(dismissButton==null)return;
+        // Geometry alone also matches when another application's popup covers
+        // the bubble. Showing an owned button there would raise the whole group.
+        var hit=Native.WindowFromPoint(new Native.POINT {X=pointer.X,Y=pointer.Y});
+        bool exposed=hit==Handle || (dismissButton.IsHandleCreated && hit==dismissButton.Handle);
         bool hover=!trayMenuOpen && Visible && bubbleRequested && (dismissButton.Capture ||
-            CloseBubbleButton.Hovered(pointer,new Rectangle(position,Size),dismissButton.Visible));
+            (exposed && CloseBubbleButton.Hovered(pointer,new Rectangle(position,Size),dismissButton.Visible)));
         dismissButton.Follow(position,hover);
     }
     internal void SetBubbleVisible(bool requested) {
@@ -229,18 +231,19 @@ class QuotaLabel : Form {
     internal void SetDefaultAppearance(bool useDefault) {
         if(closing)return;
         DefaultAppearance=useDefault;
-        if(useDefault){systemDark=ReadSystemDark() ?? systemDark;appearanceTimer.Start();}
-        else appearanceTimer.Stop();
+        if(useDefault)codexDark=ReadCodexTheme() ?? codexDark;
         desktopBackground=null;
-        panelColor=useDefault?BubbleAppearance.Surface(systemDark):WithOpacity(petColour);
+        panelColor=useDefault?BubbleAppearance.Surface(codexDark):WithOpacity(petColour);
         UpdateAppearanceMenu();SaveAppearance();RenderFrame();
         if(!useDefault){RefreshBackground();RenderFrame();}
     }
-    internal void RefreshSystemAppearance() {
-        if(closing || !DefaultAppearance)return;
-        bool next=ReadSystemDark() ?? systemDark;
-        if(next==systemDark)return;
-        systemDark=next;panelColor=BubbleAppearance.Surface(systemDark);RenderFrame();
+    internal void RefreshCodexAppearance() {
+        if(closing)return;
+        bool next=ReadCodexTheme() ?? codexDark;
+        if(next==codexDark)return;
+        codexDark=next;
+        if(DefaultAppearance)panelColor=BubbleAppearance.Surface(codexDark);
+        RenderFrame();
     }
     internal void SetMode(bool system) {
         if(closing || SystemMode==system || (system?!SystemEnabled:!QuotaEnabled))return;
@@ -268,7 +271,7 @@ class QuotaLabel : Form {
     }
     internal void RefreshCurrent() {
         if(closing || !AnyModeEnabled)return;
-        RefreshSystemAppearance();
+        RefreshCodexAppearance();
         if(SystemMode)SampleSystem(true);
         else {var handler=RefreshRequested;if(handler!=null)handler();}
     }
@@ -314,7 +317,7 @@ class QuotaLabel : Form {
     protected override void WndProc(ref Message m) {
         if(m.Msg==0x21){m.Result=new IntPtr(3);return;} // MA_NOACTIVATE, keep editor focus.
         base.WndProc(ref m);
-        if(m.Msg==0x1A || m.Msg==0x31A)RefreshSystemAppearance(); // Settings / theme changed.
+        if(m.Msg==0x1A || m.Msg==0x31A)RefreshCodexAppearance(); // Settings / theme changed.
     }
     Rectangle PetBounds {get{return new Rectangle(anchor.X,anchor.Y,petSize,(int)Math.Ceiling(petSize*208.0/192));}}
     protected override void OnMouseDown(MouseEventArgs e) {
@@ -380,8 +383,8 @@ class QuotaLabel : Form {
     protected override void OnPaint(PaintEventArgs e) { RenderFrame(); }
     void RenderFrame() {
         if(!IsHandleCreated || closing)return;
-        if(glass!=null && glass.Ready){glass.SetNativeAppearance(DefaultAppearance);glass.SetBlurEnabled(FrostedGlass);glass.SetTint(panelColor);}
-        if(dismissButton!=null)dismissButton.SetColour(panelColor,DefaultAppearance,systemDark);
+        if(glass!=null && glass.Ready){glass.SetShadowTheme(codexDark);glass.SetBlurEnabled(FrostedGlass);glass.SetTint(panelColor);}
+        if(dismissButton!=null)dismissButton.SetColour(panelColor,DefaultAppearance,codexDark);
         using(var bitmap=new Bitmap(Width,Height,System.Drawing.Imaging.PixelFormat.Format32bppPArgb)) {
             using(var g=Graphics.FromImage(bitmap)) {
                 g.Clear(Color.Transparent);g.SmoothingMode=SmoothingMode.AntiAlias;
@@ -396,11 +399,11 @@ class QuotaLabel : Form {
                     // text, while the visible tint stays in the Composition layer.
                     using(var shape=Rounded(new Rectangle(0,0,Width,Height),BubbleLayout.Radius))
                     using(var hit=new SolidBrush(Color.FromArgb(1,panelColor.R,panelColor.G,panelColor.B)))g.FillPath(hit,shape);
-                Color fg=DefaultAppearance?BubbleAppearance.Text(systemDark):PetTheme.Text(panelColor,desktopBackground);
-                Color muted=DefaultAppearance?BubbleAppearance.Secondary(systemDark):PetTheme.Secondary(panelColor,desktopBackground);
+                Color fg=DefaultAppearance?BubbleAppearance.Text(codexDark):PetTheme.Text(panelColor,desktopBackground);
+                Color muted=DefaultAppearance?BubbleAppearance.Secondary(codexDark):PetTheme.Secondary(panelColor,desktopBackground);
                 // Inset the one-pixel stroke so antialiasing stays inside the HWND.
                 using(var outline=Rounded(new RectangleF(.5f,.5f,Width-1,Height-1),BubbleLayout.Radius-.5f))
-                if(DefaultAppearance)BubbleAppearance.DrawEdge(g,outline,new RectangleF(0,0,Width,Height),systemDark);
+                if(DefaultAppearance)BubbleAppearance.DrawEdge(g,outline,new RectangleF(0,0,Width,Height),codexDark);
                 else using(var pen=new Pen(PetTheme.Outline(panelColor),1f))g.DrawPath(pen,outline);
                 using(var title=new Font("Segoe UI",13,FontStyle.Regular,GraphicsUnit.Pixel))
                 using(var detail=new Font("Segoe UI",11,FontStyle.Regular,GraphicsUnit.Pixel))
@@ -446,7 +449,7 @@ class QuotaLabel : Form {
     }
     void DrawMetric(Graphics g,Font detail,Font amount,Brush primary,Brush secondary,string label,string value,double? percent,int x) {
         DrawText(g,detail,secondary,label,x,32,74);DrawText(g,amount,primary,value,x,46,74);
-        var accent=DefaultAppearance?BubbleAppearance.Text(systemDark):PetTheme.ProgressAccent(panelColor,desktopBackground);
+        var accent=DefaultAppearance?BubbleAppearance.Text(codexDark):PetTheme.ProgressAccent(panelColor,desktopBackground);
         using(var track=new SolidBrush(Color.FromArgb(38,accent)))
         using(var fill=new SolidBrush(Color.FromArgb(217,accent)))
         using(var shape=Rounded(new RectangleF(x,68.5f,74,3),1.5f)) {
@@ -489,7 +492,7 @@ class QuotaLabel : Form {
         int x=desired.X,y=desired.Y;
         if(glass!=null)glass.Follow(desired,true);
         if(desired!=lastLabel) {
-            Native.SetWindowPos(Handle,new IntPtr(-1),x,y,0,0,0x0010|0x0001);
+            Native.SetWindowPos(Handle,IntPtr.Zero,x,y,0,0,0x0010|0x0001|0x0004);
             Native.RECT actual;Native.GetWindowRect(Handle,out actual);
             Program.Record("placement",new { targetHwnd=target.ToInt64(), anchorX=anchor.X,anchorY=anchor.Y,
                 labelX=actual.Left,labelY=actual.Top, source=petState.Dragging?"drag-pointer-anchor":"saved-anchor-or-release-reconciliation", milliseconds=watch.ElapsedMilliseconds,

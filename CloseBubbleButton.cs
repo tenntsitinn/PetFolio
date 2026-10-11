@@ -34,10 +34,10 @@ sealed class CloseBubbleButton : Form {
         colour=value;nativeAppearance=native;dark=isDark;if(IsHandleCreated)Render();
     }
     internal void Follow(Point bubble,bool visible) {
-        if(!visible){pressed=false;Capture=false;if(Visible)Hide();return;}
+        if(!visible){pressed=false;Capture=false;if(Visible)Native.HidePreservingOrder(this);return;}
         var position=new Point(bubble.X+OffsetX,bubble.Y+OffsetY);
-        if(Location!=position || !Visible)Native.SetWindowPos(Handle,new IntPtr(-1),position.X,position.Y,0,0,0x0010|0x0001);
-        if(!Visible)Show();
+        if(Location!=position || !Visible)Native.SetWindowPos(Handle,IntPtr.Zero,position.X,position.Y,0,0,0x0010|0x0001|0x0004);
+        if(!Visible)Native.ShowPreservingOrder(this);
     }
     protected override void OnMouseDown(MouseEventArgs e) {
         base.OnMouseDown(e);

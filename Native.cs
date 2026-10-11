@@ -31,6 +31,42 @@ static class Native {
     [DllImport("user32.dll")] internal static extern int GetSystemMetrics(int index);
     [DllImport("user32.dll")] internal static extern IntPtr WindowFromPoint(POINT point);
     [DllImport("user32.dll")] internal static extern IntPtr GetAncestor(IntPtr h,uint flags);
+    [DllImport("user32.dll")] internal static extern IntPtr GetWindow(IntPtr h,uint command);
+    // Showing or hiding an owned surface can raise its owners without activation.
+    // Keep the complete Bubble group at its previous place in desktop z-order.
+    internal static void ShowPreservingOrder(Form window) {SetVisiblePreservingOrder(window,true);}
+    internal static void HidePreservingOrder(Form window) {SetVisiblePreservingOrder(window,false);}
+    static void SetVisiblePreservingOrder(Form window,bool visible) {
+        var root=window;
+        while(root.Owner!=null)root=root.Owner;
+        var family=new HashSet<IntPtr>();
+        CollectOwnedWindows(root,family);
+        IntPtr predecessor=IntPtr.Zero;
+        bool found=false;
+        EnumWindows((h,p)=> {
+            if(!IsWindowVisible(h) || !family.Contains(h))return true;
+            predecessor=GetWindow(h,3); // GW_HWNDPREV
+            while(predecessor!=IntPtr.Zero && (family.Contains(predecessor) || !IsWindowVisible(predecessor)))
+                predecessor=GetWindow(predecessor,3);
+            // Inserting after an ordinary window would remove WS_EX_TOPMOST.
+            if((GetWindowLongPtr(h,-20).ToInt64()&8)!=0 &&
+                (predecessor==IntPtr.Zero || (GetWindowLongPtr(predecessor,-20).ToInt64()&8)==0))
+                predecessor=new IntPtr(-1); // HWND_TOPMOST
+            found=true;return false;
+        },IntPtr.Zero);
+        if(visible)window.Show();else window.Hide();
+        if(!found)return;
+        var layers=new List<IntPtr>();
+        EnumWindows((h,p)=>{if(IsWindowVisible(h) && family.Contains(h))layers.Add(h);return true;},IntPtr.Zero);
+        foreach(var layer in layers) {
+            SetWindowPos(layer,predecessor,0,0,0,0,0x0010|0x0001|0x0002|0x0200);
+            predecessor=layer;
+        }
+    }
+    static void CollectOwnedWindows(Form window,HashSet<IntPtr> family) {
+        if(window.IsHandleCreated)family.Add(window.Handle);
+        foreach(var owned in window.OwnedForms)CollectOwnedWindows(owned,family);
+    }
     [DllImport("user32.dll")] internal static extern bool PrintWindow(IntPtr h,IntPtr dc,uint flags);
     [StructLayout(LayoutKind.Sequential)] internal struct POINT {public int X,Y;}
     [StructLayout(LayoutKind.Sequential)] internal struct SIZE {public int Width,Height;}

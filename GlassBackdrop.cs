@@ -21,7 +21,6 @@ sealed class GlassBackdrop : Form {
     CompositionBackdropBrush backdropSource;
     SpriteVisual backdropVisual;
     Color tint=Color.FromArgb(178,239,200,78);
-    bool nativeAppearance;
     bool blurEnabled=true;
     readonly System.Collections.Generic.List<IDisposable> resources=new System.Collections.Generic.List<IDisposable>();
     public bool Ready {get;private set;}
@@ -96,20 +95,18 @@ sealed class GlassBackdrop : Form {
         }catch(Exception ex) {Program.Record("backdrop-resume-error",new {error=ex.GetType().Name});}
     }
     public void Follow(Point position,bool visible) {
-        if(!visible || !Ready){if(Visible)Hide();if(shadow!=null)shadow.Follow(position,false);return;}
-        if(shadow!=null)shadow.Follow(position,!nativeAppearance);
+        if(!visible || !Ready){if(Visible)Native.HidePreservingOrder(this);if(shadow!=null)shadow.Follow(position,false);return;}
+        if(shadow!=null)shadow.Follow(position,true);
         if(Location!=position || !Visible)
-            Native.SetWindowPos(Handle,new IntPtr(-1),position.X,position.Y,0,0,0x0010|0x0001);
-        if(!Visible)Show();
+            Native.SetWindowPos(Handle,IntPtr.Zero,position.X,position.Y,0,0,0x0010|0x0001|0x0004);
+        if(!Visible)Native.ShowPreservingOrder(this);
     }
     public void SetTint(Color colour) {
         tint=colour;
         if(tintBrush!=null)tintBrush.Color=Windows.UI.Color.FromArgb(colour.A,colour.R,colour.G,colour.B);
     }
-    internal void SetNativeAppearance(bool enabled) {
-        if(nativeAppearance==enabled)return;
-        nativeAppearance=enabled;
-        if(shadow!=null)shadow.Follow(Location,Visible && !enabled);
+    internal void SetShadowTheme(bool dark) {
+        if(shadow!=null)shadow.SetTheme(dark);
     }
     internal void SetBlurEnabled(bool enabled) {
         blurEnabled=enabled;

@@ -45,7 +45,7 @@ try {
         if ($LASTEXITCODE -ne 0) { throw ($result -join [Environment]::NewLine) }
         Write-Output ('{0}: {1}' -f $suite.Name, $result[-1])
     }
-    foreach ($suiteName in @('FeatureLifecycleTests', 'BubbleClickTests', 'TrayOverlapTests', 'BubbleMaterialTests')) {
+    foreach ($suiteName in @('FeatureLifecycleTests', 'BubbleClickTests', 'BubbleThemeTests', 'TrayOverlapTests', 'BubbleZOrderTests', 'BubbleMaterialTests')) {
         $lifecycleExecutable = Join-Path $testRoot ($suiteName + '.exe')
         $generated += $lifecycleExecutable
         & (Join-Path $projectRoot 'build.ps1') -OutputDirectory $testRoot -OutputName ($suiteName + '.exe') -EntryPoint $suiteName -Target 'exe' -AdditionalSources ($suiteName + '.cs')

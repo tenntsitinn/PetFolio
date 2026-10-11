@@ -181,8 +181,7 @@ static class BubbleClickTests {
             var petItem=(ToolStripMenuItem)appearance.DropDownItems[1];
             var opacity=(ToolStripMenuItem)appearance.DropDownItems[3];
             var colourField=typeof(QuotaLabel).GetField("panelColor",BindingFlags.Instance|BindingFlags.NonPublic);
-            var appearanceTimer=(System.Windows.Forms.Timer)typeof(QuotaLabel).GetField("appearanceTimer",BindingFlags.Instance|BindingFlags.NonPublic).GetValue(view);
-            bool? darkTheme=false;view.ReadSystemDark=()=>darkTheme;
+            bool? darkTheme=false;view.ReadCodexTheme=()=>darkTheme;
             defaultItem.PerformClick();
             var glass=view.Owner as GlassBackdrop;
             if(glass!=null)Check(!glass.BlurEnabled,"Default removes background blur from composition");
@@ -190,9 +189,9 @@ static class BubbleClickTests {
             Check((Color)colourField.GetValue(view)==Color.FromArgb(230,255,255,255),"Light Default uses native white at fixed E6 alpha");
             typeof(QuotaLabel).GetMethod("SetOpacity",BindingFlags.Instance|BindingFlags.NonPublic).Invoke(view,new object[]{100});
             Check(((Color)colourField.GetValue(view)).A==230,"Default ignores direct opacity changes");
-            darkTheme=true;systemTick.Invoke(appearanceTimer,new object[]{EventArgs.Empty});
-            Check((Color)colourField.GetValue(view)==Color.FromArgb(230,32,32,32),"Theme observation switches Default to the native dark surface");
-            darkTheme=null;view.RefreshSystemAppearance();
+            darkTheme=true;view.RefreshCodexAppearance();
+            Check((Color)colourField.GetValue(view)==Color.FromArgb(230,32,32,32),"Theme refresh switches Default to the native dark surface");
+            darkTheme=null;view.RefreshCodexAppearance();
             Check((Color)colourField.GetValue(view)==Color.FromArgb(230,32,32,32),"Theme read failure retains the current palette");
             view.UpdatePet(new PetState(new IntPtr(1),new Point(600,400),112,true,true,false,"new-pet",Color.CornflowerBlue));
             Check((Color)colourField.GetValue(view)==Color.FromArgb(230,32,32,32),"Pet changes cannot recolour Default");
@@ -201,7 +200,7 @@ static class BubbleClickTests {
             using(var restored=new QuotaLabel(""))Check(restored.DefaultAppearance,"Default appearance survives restart");
             petItem.PerformClick();
             if(glass!=null)Check(glass.BlurEnabled,"Pet colour restores background blur");
-            Check(opacity.Enabled && petItem.Checked && !defaultItem.Checked && !appearanceTimer.Enabled,"Pet colour unlocks opacity and stops theme observation");
+            Check(opacity.Enabled && petItem.Checked && !defaultItem.Checked,"Pet colour unlocks opacity");
             Check((Color)colourField.GetValue(view)==Color.FromArgb(51,Color.CornflowerBlue),"Returning to Pet colour restores 20 percent with the latest pet colour");
             using(var restored=new QuotaLabel(""))Check(!restored.DefaultAppearance,"Pet appearance survives restart");
             var frosted=(ToolStripMenuItem)appearance.DropDownItems[4];
