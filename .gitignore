@@ -27,3 +27,6 @@ design/*
 !design/petfolio-symbol-v12.svg
 !design/quota-bubble-outline-preview.svg
 !design/quota-bubble-outline-preview.png
+
+# Product illustrations used by the bilingual README
+!docs/images/**/*.png

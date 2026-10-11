@@ -1,4 +1,10 @@
-# PetFolio for Windows 1.3.0
+# PetFolio for Windows 1.3.1
+
+將 Windows 更新整理回 main，加入繁體中文與英文產品圖，以及操作與設定圖解。macOS native 實驗保留在原分支。
+
+此版本承接 1.3.0 的 Windows 功能；本次整理不新增 macOS 支援。
+
+## Windows 1.3.0 功能記錄
 
 加入系統監控、Default 外觀與托盤調整；Frosted glass 正在進行灰測。
 

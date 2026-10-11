@@ -4,15 +4,34 @@
 
 **圍繞 Codex Pet，增加實用功能與互動的 Windows 桌面伴侶工具。**
 
-PetFolio 讓桌面寵物成為工作時有用的小夥伴。第一個功能 **Quota Bubble** 會在你已有的 Codex Pet 旁顯示剩餘額度，跟隨寵物移動，並提供即時刷新與外觀調整。
+PetFolio 讓桌面寵物成為工作時有用的小夥伴。**Quota Bubble / System Bubble** 在你已有的 Codex Pet 旁顯示剩餘額度或電腦狀態，跟隨寵物移動，並提供單擊刷新、雙擊切換與外觀調整。
 
 可擴充性是專案的基本要求：應用宿主、共用寵物狀態與個別功能已分開，後續功能可以沿用同一套追蹤與生命週期管理。
 
 > 提供獨立 Windows 程式及可安裝的本機 Codex 插件封裝。應用程式名稱為 PetFolio，Quota Bubble 是其中的額度功能；插件入口提供啟動、停止與診斷。尚未公開上架。
 
-[快速開始](#快速開始) · [使用方式](#使用方式) · [開發與擴充](#開發與擴充) · [已知限制](#已知限制)
+[下載最新版本](https://github.com/tenntsitinn/PetFolio/releases/latest) · [快速開始](#快速開始) · [使用方式](#使用方式) · [開發與擴充](#開發與擴充) · [已知限制](#已知限制)
 
 > **Frosted glass 正在進行灰測。** 可在系統匣 `Appearance → Frosted glass` 啟用或停用背景模糊；Default 預設關閉、Pet colour 預設開啟，兩種外觀分別保存選擇。歡迎回報顯示異常或效能問題。
+
+![功能概覽與使用場景](docs/images/zh-hant/01-overview.png)
+
+![Default：與原生 Status Bubble 同框](docs/images/zh-hant/03-default-appearance.png)
+
+![Pet colour：隨寵物變色](docs/images/zh-hant/04-pet-colour.png)
+
+介面示意採用 Codex 內置寵物與示例數值。
+
+<details>
+<summary>操作與設定圖解（展開）</summary>
+
+![單擊、雙擊與拖動](docs/images/zh-hant/02-gestures.png)
+
+![不透明度與文字顏色適應](docs/images/zh-hant/05-opacity-and-ink.png)
+
+![快速開始與自動啟動](docs/images/zh-hant/06-get-started.png)
+
+</details>
 
 ## 目前功能：Quota Bubble
 
@@ -135,7 +154,8 @@ Windows 若停用了此登入啟動項，需在系統的啟動應用設定重新
 
 | 操作 | 效果 |
 | --- | --- |
-| 單擊氣泡內部 | 立即刷新額度；查詢中重複點擊不會增加請求 |
+| 單擊氣泡內部 | 刷新目前模式；額度查詢中重複點擊不會增加請求 |
+| 雙擊氣泡 | 切換 Quota / System，需兩項功能都啟用 |
 | 拖動氣泡 | 選擇相對於寵物的方位，放開後以彈簧動畫吸附 |
 | 拖動時按 Esc | 取消本次氣泡拖動 |
 | 系統匣 `Refresh` | 刷新目前模式的資料與字體顏色 |
@@ -283,13 +303,34 @@ python .\build-pet-palettes.py --asar 'C:\path\to\resources\app.asar' --home 'C:
 
 **A Windows desktop companion that adds useful features and interactions around Codex Pet.**
 
-PetFolio makes your desktop pet a useful companion while you work. Its first feature, **Quota Bubble**, shows your remaining Codex quota beside your existing pet, follows its movement, and provides refresh and appearance controls.
+PetFolio makes your desktop pet a useful companion while you work. **Quota Bubble / System Bubble** shows remaining Codex quota or system usage beside your existing pet, follows its movement, and offers click-to-refresh, double-click switching, and appearance controls.
 
 Extensibility is a core requirement. The application host, shared pet state, and individual features have separate responsibilities so future features can reuse pet tracking and lifecycle management.
 
 PetFolio includes a standalone Windows application and an installable local Codex plugin that starts, stops, and diagnoses the companion. It has not been published to the public plugin directory. PetFolio is the project name; Quota Bubble is its quota feature.
 
 > **Frosted glass is currently in testing.** Toggle background blur in `Appearance → Frosted glass`. Default starts with blur off and Pet colour with blur on; each appearance remembers its own choice. Please report rendering or performance issues.
+
+[Download the latest release](https://github.com/tenntsitinn/PetFolio/releases/latest) · [Getting started](#getting-started) · [Using the application](#using-the-application)
+
+![Overview and use cases](docs/images/en/01-overview.png)
+
+![Default: alongside the native Status Bubble](docs/images/en/03-default-appearance.png)
+
+![Pet colour: colours follow your pet](docs/images/en/04-pet-colour.png)
+
+UI illustrations use built-in Codex pets and sample values.
+
+<details>
+<summary>Usage and settings guide (expand)</summary>
+
+![Click, double-click, and drag](docs/images/en/02-gestures.png)
+
+![Opacity and adaptive text colour](docs/images/en/05-opacity-and-ink.png)
+
+![Quick start and automatic startup](docs/images/en/06-get-started.png)
+
+</details>
 
 ### Current feature: Quota Bubble
 
@@ -413,6 +454,7 @@ still require compatibility testing. Plugin installation does not enable this op
 | Action | Result |
 | --- | --- |
 | Click inside the bubble | Refresh current data and text colour; repeated clicks during a quota query do not add requests |
+| Double-click the bubble | Switch Quota / System when both features are enabled |
 | Drag the bubble | Choose its position relative to the pet; it snaps into place with a spring animation |
 | Press Esc while dragging | Cancel the drag |
 | Tray: `Refresh` | Refresh the current mode's data and text colour |
