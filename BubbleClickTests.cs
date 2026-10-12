@@ -34,6 +34,10 @@ static class BubbleClickTests {
     static string Text(QuotaLabel view,string field) {
         return (string)typeof(QuotaLabel).GetField(field,BindingFlags.Instance|BindingFlags.NonPublic).GetValue(view);
     }
+    static QuotaLabel LoadSavedView() {
+        var settings=new BubbleSettingsStore(System.IO.Path.Combine(Program.DataFolder,"appearance.json"),(k,d)=>{}).Load();
+        return new QuotaLabel("",settings,new BubbleContentState(settings));
+    }
     static void Click(QuotaLabel view,int x=80,int y=40) {
         var point=new IntPtr(x|(y<<16));
         SendMessage(view.Handle,0x201,new IntPtr(1),point);
@@ -56,7 +60,9 @@ static class BubbleClickTests {
         using(var feature=new QuotaFeature("",new Pets(),()=>source,a=>{pending.Enqueue(a);posted.Set();},s=>{},(k,d)=>{})) {
             Action drain=()=>{Check(posted.WaitOne(5000),"Query completion arrives");Action a;while(pending.TryDequeue(out a))a();};
             feature.Start();Check(source.Entered.WaitOne(5000),"Initial request starts");drain();
-            var view=feature.View;int clicks=0;view.RefreshRequested+=()=>clicks++;
+            var view=feature.View;int clicks=0;view.RefreshRequested+=()=>{if(!view.SystemMode)clicks++;};
+            var interactionTimer=(System.Windows.Forms.Timer)typeof(QuotaLabel).GetField("interactionTimer",BindingFlags.Instance|BindingFlags.NonPublic).GetValue(view);
+            Check(interactionTimer.Enabled && interactionTimer.Interval==100,"Visible stationary bubble maintains a low-frequency hover timer");
             view.SetDefaultAppearance(false);
             Check(view.ClientSize==new Size(208,104),"Approved compact geometry is used");
             if(view.Owner is GlassBackdrop)Check(view.Owner.ClientSize==view.ClientSize,"Glass and foreground share dimensions");
@@ -95,6 +101,11 @@ static class BubbleClickTests {
             int before=clicks;
             Mouse(view,"OnMouseDown",80,40);Mouse(view,"OnMouseMove",90,40);Mouse(view,"OnMouseMove",80,40);Mouse(view,"OnMouseUp",80,40);
             Check(clicks==before,"Dragging away and back never becomes a click");
+            Check(interactionTimer.Interval==16,"Panel drag and snap use the fast interaction interval");
+            var spring=(PetPanelSpring)typeof(QuotaLabel).GetField("snap",BindingFlags.Instance|BindingFlags.NonPublic).GetValue(view);
+            var settle=System.Diagnostics.Stopwatch.StartNew();
+            while(spring.Active && settle.ElapsedMilliseconds<3000){Application.DoEvents();Thread.Sleep(10);}
+            Check(!spring.Active && interactionTimer.Interval==100,"Snap settles without any new pet snapshots and returns to idle hover timing");
             Mouse(view,"OnMouseDown",80,40);view.Capture=false;Mouse(view,"OnMouseUp",80,40);
             Check(clicks==before,"Capture loss cancels refresh");
             Mouse(view,"OnMouseDown",80,40,MouseButtons.Right);Mouse(view,"OnMouseUp",80,40,MouseButtons.Right);
@@ -108,6 +119,7 @@ static class BubbleClickTests {
             SendMessage(view.DismissButton.Handle,0x201,new IntPtr(1),new IntPtr(10|(10<<16)));
             SendMessage(view.DismissButton.Handle,0x202,IntPtr.Zero,new IntPtr(10|(10<<16)));
             Check(!view.BubbleRequested && clicks==before,"Close button hides without refreshing");
+            Check(!interactionTimer.Enabled,"Hidden bubble stops its interaction timer");
             ((ToolStripMenuItem)feature.Commands[feature.Commands.Length-1]).PerformClick();
             Check(source.Entered.WaitOne(5000) && backgroundReads==readsBeforeMovement,"Hidden bubble keeps quota polling without capturing a background");
             source.Release.Set();drain();
@@ -130,9 +142,9 @@ static class BubbleClickTests {
             FlushClick();
             Check(view.SystemMode && clicks==before,"Double click switches to System without a quota refresh");
             Check(view.Handle==hwnd && view.Size==size,"Switch reuses the same window and geometry");
-            using(var restored=new QuotaLabel(""))Check(restored.SystemMode,"A new instance restores the saved System mode");
+            using(var restored=LoadSavedView())Check(restored.SystemMode,"A new instance restores the saved System mode");
             Click(view);Check(clicks==before,"System single click never requests quota");
-            var systemTimer=(System.Windows.Forms.Timer)typeof(QuotaLabel).GetField("systemTimer",BindingFlags.Instance|BindingFlags.NonPublic).GetValue(view);
+            var systemTimer=(System.Windows.Forms.Timer)typeof(SystemMetricsService).GetField("sampleTimer",BindingFlags.Instance|BindingFlags.NonPublic).GetValue(feature.SystemService);
             Check(systemTimer.Enabled,"System mode samples while visible");
             var systemTick=typeof(System.Windows.Forms.Timer).GetMethod("OnTick",BindingFlags.Instance|BindingFlags.NonPublic);
             background=Color.White;systemTick.Invoke(systemTimer,new object[]{EventArgs.Empty});
@@ -165,7 +177,7 @@ static class BubbleClickTests {
             systemOption.PerformClick();
             Check(!view.Visible && !systemTimer.Enabled && !view.ShowBubbleCommand.Enabled && !refresh.Enabled,"Both disabled hide the bubble, stop sampling and disable actions");
             feature.Restore();Check(!view.Visible && !view.AnyModeEnabled,"Restore respects disabled features");
-            using(var restored=new QuotaLabel(""))Check(!restored.QuotaEnabled && !restored.SystemEnabled,"Both disabled flags survive a new instance");
+            using(var restored=LoadSavedView())Check(!restored.QuotaEnabled && !restored.SystemEnabled,"Both disabled flags survive a new instance");
             systemOption.PerformClick();
             Check(view.Visible && view.SystemMode && systemTimer.Enabled && refresh.Enabled,"Re-enabling System restores the retained visible bubble and sampling");
             quotaOption.PerformClick();
@@ -197,12 +209,12 @@ static class BubbleClickTests {
             Check((Color)colourField.GetValue(view)==Color.FromArgb(230,32,32,32),"Pet changes cannot recolour Default");
             int defaultReads=backgroundReads;view.SetMode(true);view.RefreshCurrent();
             Check(backgroundReads==defaultReads,"Default never uses desktop sampling to change text colours");
-            using(var restored=new QuotaLabel(""))Check(restored.DefaultAppearance,"Default appearance survives restart");
+            using(var restored=LoadSavedView())Check(restored.DefaultAppearance,"Default appearance survives restart");
             petItem.PerformClick();
             if(glass!=null)Check(glass.BlurEnabled,"Pet colour restores background blur");
             Check(opacity.Enabled && petItem.Checked && !defaultItem.Checked,"Pet colour unlocks opacity");
             Check((Color)colourField.GetValue(view)==Color.FromArgb(51,Color.CornflowerBlue),"Returning to Pet colour restores 20 percent with the latest pet colour");
-            using(var restored=new QuotaLabel(""))Check(!restored.DefaultAppearance,"Pet appearance survives restart");
+            using(var restored=LoadSavedView())Check(!restored.DefaultAppearance,"Pet appearance survives restart");
             var frosted=(ToolStripMenuItem)appearance.DropDownItems[4];
             Check(frosted.Checked && view.FrostedGlass,"Pet colour starts with frosted glass enabled");
             frosted.PerformClick();
@@ -211,10 +223,10 @@ static class BubbleClickTests {
             Check(!frosted.Checked,"Default retains its independent blur setting");
             frosted.PerformClick();
             Check(frosted.Checked && view.FrostedGlass && !opacity.Enabled,"Default can enable blur without unlocking opacity");
-            using(var restored=new QuotaLabel(""))Check(restored.DefaultAppearance && restored.FrostedGlass,"Default blur choice survives restart");
+            using(var restored=LoadSavedView())Check(restored.DefaultAppearance && restored.FrostedGlass,"Default blur choice survives restart");
             petItem.PerformClick();
             Check(!frosted.Checked && !view.FrostedGlass,"Returning to Pet colour restores its disabled blur choice");
-            using(var restored=new QuotaLabel(""))Check(!restored.DefaultAppearance && !restored.FrostedGlass,"Pet blur choice survives restart");
+            using(var restored=LoadSavedView())Check(!restored.DefaultAppearance && !restored.FrostedGlass,"Pet blur choice survives restart");
             frosted.PerformClick();defaultItem.PerformClick();frosted.PerformClick();petItem.PerformClick();
             view.SetMode(false);
         }

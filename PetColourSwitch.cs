@@ -63,6 +63,11 @@ sealed class PetPaletteCatalog {
 
 static class PetSelectionConfig {
     public static string Read(string path) {
+        string selected;int? size;
+        return TryRead(path,out selected,out size)?selected:null;
+    }
+    internal static bool TryRead(string path,out string selected,out int? size) {
+        selected=null;size=null;
         try {
             using(var stream=new FileStream(path,FileMode.Open,FileAccess.Read,FileShare.ReadWrite|FileShare.Delete))
             using(var reader=new StreamReader(stream)) {
@@ -70,16 +75,21 @@ static class PetSelectionConfig {
                 while((line=reader.ReadLine())!=null) {
                     line=line.Trim();if(line.Length==0 || line.StartsWith("#"))continue;
                     if(line.StartsWith("[")){int end=line.IndexOf(']');if(end>0)section=line.Substring(1,end-1).Trim();continue;}
-                    if(section!="desktop")continue;
                     int equals=line.IndexOf('=');if(equals<0)continue;
-                    if(line.Substring(0,equals).Trim().Trim('"','\'')!="selected-avatar-id")continue;
-                    var value=line.Substring(equals+1).Trim();if(value.Length<2 || (value[0]!='"' && value[0]!='\''))return null;
-                    int closing=value.IndexOf(value[0],1);if(closing<1)return null;
-                    var trailing=value.Substring(closing+1).Trim();if(trailing.Length>0 && !trailing.StartsWith("#"))return null;
-                    return value.Substring(1,closing-1);
+                    var key=line.Substring(0,equals).Trim().Trim('"','\'');
+                    var value=line.Substring(equals+1).Trim();
+                    if(key=="avatar-overlay-mascot-width-px") {
+                        int width;if(Int32.TryParse(value.Split('#')[0].Trim(),out width))size=Math.Max(80,Math.Min(224,width));
+                    }
+                    if(section!="desktop" || key!="selected-avatar-id")continue;
+                    if(value.Length<2 || (value[0]!='"' && value[0]!='\''))return false;
+                    int closing=value.IndexOf(value[0],1);if(closing<1)return false;
+                    var trailing=value.Substring(closing+1).Trim();if(trailing.Length>0 && !trailing.StartsWith("#"))return false;
+                    selected=value.Substring(1,closing-1);
                 }
+                return true;
             }
-        }catch(IOException){ }
-        return null;
+        }catch(IOException){ }catch(UnauthorizedAccessException){ }
+        return false;
     }
 }

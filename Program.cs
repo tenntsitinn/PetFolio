@@ -14,18 +14,17 @@ using System.Windows.Forms;
 [assembly: System.Reflection.AssemblyTitle("PetFolio")]
 [assembly: System.Reflection.AssemblyProduct("PetFolio")]
 [assembly: System.Reflection.AssemblyDescription("PetFolio desktop companion for Codex Pet")]
-[assembly: System.Reflection.AssemblyVersion("1.3.2.0")]
-[assembly: System.Reflection.AssemblyFileVersion("1.3.2.0")]
+[assembly: System.Reflection.AssemblyVersion("1.4.0.0")]
+[assembly: System.Reflection.AssemblyFileVersion("1.4.0.0")]
 
 // PetFolio reads quota and the pet anchor, never writes Codex settings.
 static class Program {
     internal static readonly string Folder = AppDomain.CurrentDomain.BaseDirectory;
     internal static string DataFolder { get { return RuntimeData.Resolve(); } }
     internal static readonly JavaScriptSerializer Json = new JavaScriptSerializer();
+    static readonly DiagnosticLog diagnostics=new DiagnosticLog(()=>DataFolder);
     internal static void Record(string kind, object data) {
-        Directory.CreateDirectory(DataFolder);
-        lock (Json) File.AppendAllText(Path.Combine(DataFolder, "probe-events.jsonl"),
-            Json.Serialize(new { at = DateTime.UtcNow.ToString("o"), kind = kind, data = data }) + "\n");
+        diagnostics.Write(kind,data);
     }
     [STAThread] static void Main(string[] args) {
         // WinExe may have redirected pipes but no console handle. Setting
@@ -40,8 +39,9 @@ static class Program {
             try {
                 if(args[0]=="--status") {
                     if(args.Length!=1)throw new ArgumentException("--status 不接受路徑參數。");
-                    Console.WriteLine(Json.Serialize(new {ok=true,running=CompanionSignals.Running(),
-                        ready=CompanionSignals.Ready(),dataDirectory=DataFolder,
+                    bool running=CompanionSignals.Running(),isReady=CompanionSignals.Ready();
+                    Console.WriteLine(Json.Serialize(new {ok=true,running=running,
+                        ready=isReady,dataDirectory=DataFolder,diagnostics=running && isReady?PetDiagnostics.Read(DataFolder):null,
                         version=typeof(Program).Assembly.GetName().Version.ToString(3)}));
                 }else {
                     var paths=new string[args.Length-1];Array.Copy(args,1,paths,0,paths.Length);

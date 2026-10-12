@@ -1,0 +1,29 @@
+name: Windows checks
+on:
+  push:
+    branches: [main, 'codex/**']
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  check:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run behavior and window tests
+        shell: pwsh
+        run: ./test.ps1
+      - name: Build application
+        shell: pwsh
+        run: ./build.ps1 -OutputDirectory .test-build/ci
+      - name: Build plugin payload
+        shell: pwsh
+        run: ./package-plugin.ps1
+      - name: Verify plugin payload and controls
+        shell: pwsh
+        run: ./test-plugin.ps1 -SkipCodexInstall

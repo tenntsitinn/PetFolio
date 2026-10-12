@@ -3,15 +3,12 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Drawing2D;
-using System.IO;
 using System.Runtime.InteropServices;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
-using System.Web.Script.Serialization;
 using System.Windows.Forms;
 
 class QuotaLabel : Form {
+    internal long FramesRendered {get;private set;}
+    internal long BackgroundReads {get;private set;}
     readonly string home;
     readonly Stopwatch watch = Stopwatch.StartNew();
     readonly PetPanelSpring snap = new PetPanelSpring();
@@ -35,6 +32,9 @@ class QuotaLabel : Form {
     internal Func<bool?> ReadCodexTheme;
     Color? desktopBackground;
     internal Func<Rectangle,Color,Color?> ReadBackground=BubbleBackdrop.Capture;
+    internal Func<Point?> ReadHoverPointer=()=> {
+        Native.POINT pointer;return Native.GetCursorPos(out pointer)?new Point(pointer.X,pointer.Y):(Point?)null;
+    };
     internal bool UsesBlackText {get{return PetTheme.Text(panelColor,desktopBackground).ToArgb()==Color.Black.ToArgb();}}
     GlassBackdrop glass;
     CloseBubbleButton dismissButton;
@@ -46,13 +46,13 @@ class QuotaLabel : Form {
     readonly ToolStripMenuItem frostedGlass;
     readonly ToolStripMenuItem modeMenu;
     readonly System.Windows.Forms.Timer clickTimer = new System.Windows.Forms.Timer();
-    readonly System.Windows.Forms.Timer systemTimer = new System.Windows.Forms.Timer();
-    SystemMetricsSource systemSource;
+    readonly System.Windows.Forms.Timer interactionTimer = new System.Windows.Forms.Timer();
     SystemMetrics systemMetrics = new SystemMetrics();
     double? quotaPercent1,quotaPercent2;
-    internal bool SystemMode {get;private set;}
-    internal bool QuotaEnabled {get;private set;}
-    internal bool SystemEnabled {get;private set;}
+    BubbleContentState content;
+    internal bool SystemMode {get{return content.SystemMode;}}
+    internal bool QuotaEnabled {get{return content.QuotaEnabled;}}
+    internal bool SystemEnabled {get{return content.SystemEnabled;}}
     internal bool AnyModeEnabled {get{return QuotaEnabled || SystemEnabled;}}
     readonly bool diagnosticMode;
     bool bubbleRequested = true;
@@ -60,13 +60,18 @@ class QuotaLabel : Form {
     readonly List<ToolStripMenuItem> opacityChoices = new List<ToolStripMenuItem>();
     readonly ToolTip refreshTip = new ToolTip();
     internal event Action RefreshRequested;
-    string AppearancePath { get { return Path.Combine(Program.DataFolder,"appearance.json"); } }
+    internal event Action<bool> ModeRequested;
+    internal event Action SettingsChanged;
+    internal event Action SamplingVisibilityChanged;
     string line1 = "Reading quota...", line2 = "", status = "";
     string value1 = "", value2 = "";
     Point lastLabel = new Point(int.MinValue, int.MinValue), lastAnchor;
     internal ToolStripItem[] Commands { get { return new ToolStripItem[] { appearanceMenu, showBubble, modeMenu }; } }
-    public QuotaLabel(string data, bool diagnostic=false) {
-        home = data; diagnosticMode=diagnostic;QuotaEnabled=SystemEnabled=true;DefaultAppearance=true;
+    public QuotaLabel(string data, bool diagnostic=false):this(data,new BubbleSettings(),new BubbleContentState(false,true,true),diagnostic){}
+    internal QuotaLabel(string data,BubbleSettings settings,BubbleContentState content,bool diagnostic=false) {
+        home = data; diagnosticMode=diagnostic;this.content=content;
+        opacityPercent=settings.OpacityPercent;DefaultAppearance=settings.DefaultAppearance;
+        defaultFrostedGlass=settings.DefaultFrostedGlass;petFrostedGlass=settings.PetFrostedGlass;
         ReadCodexTheme=()=>CodexMenuTheme.Read(home,ReadSystemDark);
         Text = "Quota Bubble"; FormBorderStyle = FormBorderStyle.None;
         ShowInTaskbar = false; TopMost = true; BackColor = Color.FromArgb(27, 31, 38);
@@ -77,25 +82,13 @@ class QuotaLabel : Form {
         clickTimer.Interval=SystemInformation.DoubleClickTime;
         clickTimer.Tick+=(s,e)=> {clickTimer.Stop();if(closing || !Visible || !bubbleRequested)return;
             RefreshCurrent();};
-        systemTimer.Interval=2000;
-        systemTimer.Tick+=(s,e)=>SampleSystem();
-        string preferredCorner="top-end";
-        try {
-            if(File.Exists(AppearancePath)) {
-                var settings=new JavaScriptSerializer().Deserialize<Dictionary<string,object>>(File.ReadAllText(AppearancePath));
-                object value;if(settings.TryGetValue("opacityPercent",out value))opacityPercent=Math.Max(10,Math.Min(100,Convert.ToInt32(value)));
-                if(settings.TryGetValue("panelCorner",out value) && PetPanelPlacement.Valid(value as string))preferredCorner=(string)value;
-                if(settings.TryGetValue("bubbleMode",out value))SystemMode=(value as string)=="system";
-                if(settings.TryGetValue("quotaEnabled",out value))QuotaEnabled=Convert.ToBoolean(value);
-                if(settings.TryGetValue("systemEnabled",out value))SystemEnabled=Convert.ToBoolean(value);
-                if(settings.TryGetValue("appearanceMode",out value))DefaultAppearance=(value as string)!="pet";
-                if(settings.TryGetValue("defaultFrostedGlass",out value))defaultFrostedGlass=Convert.ToBoolean(value);
-                if(settings.TryGetValue("petFrostedGlass",out value))petFrostedGlass=Convert.ToBoolean(value);
-            }
-        }catch(Exception e) { Program.Record("appearance-error",new { error=e.GetType().Name }); }
-        placement=new PetPanelPlacement(preferredCorner);
-        if(SystemMode && !SystemEnabled && QuotaEnabled)SystemMode=false;
-        if(!SystemMode && !QuotaEnabled && SystemEnabled)SystemMode=true;
+        interactionTimer.Tick+=(s,e)=> {
+            if(closing || !Visible || trayMenuOpen)return;
+            if(placement.Active || snap.Active)Follow();
+            else {var pointer=ReadHoverPointer();if(pointer.HasValue)UpdateDismissButton(Location,pointer.Value);}
+            UpdateInteractionTimer();
+        };
+        placement=new PetPanelPlacement(settings.PanelCorner);
         codexDark=ReadCodexTheme() ?? false;
         panelColor=DefaultAppearance?BubbleAppearance.Surface(codexDark):WithOpacity(petColour);
         opacityMenu=new ToolStripMenuItem("Opacity");
@@ -120,12 +113,12 @@ class QuotaLabel : Form {
     protected override void Dispose(bool disposing) {
         if(disposing && !closing) {
             closing=true;
-            clickTimer.Dispose();systemTimer.Dispose();systemSource=null;
+            clickTimer.Dispose();interactionTimer.Dispose();
             placement.Cancel();snap.Cancel();Capture=false;
             if(dismissButton!=null){dismissButton.Close();dismissButton.Dispose();dismissButton=null;}
             Owner=null;if(glass!=null){glass.Close();glass.Dispose();glass=null;}
             appearanceMenu.Dispose();showBubble.Dispose();modeMenu.Dispose();
-            refreshTip.Dispose();RefreshRequested=null;
+            refreshTip.Dispose();RefreshRequested=null;ModeRequested=null;SettingsChanged=null;SamplingVisibilityChanged=null;
         }
         base.Dispose(disposing);
     }
@@ -184,9 +177,10 @@ class QuotaLabel : Form {
         if(closing || trayMenuOpen==open)return;
         trayMenuOpen=open;
         if(open) {
+            interactionTimer.Stop();
             clickTimer.Stop();placement.Cancel();snap.Cancel();Capture=false;
             if(dismissButton!=null)dismissButton.Follow(Point.Empty,false);
-        }else if(!diagnosticMode)Follow();
+        }else {if(!diagnosticMode)Follow();UpdateInteractionTimer();}
     }
     void UpdateDismissButton(Point position,Point pointer) {
         if(dismissButton==null)return;
@@ -202,7 +196,7 @@ class QuotaLabel : Form {
         if(requested && !AnyModeEnabled)return;
         bubbleRequested=requested;showBubble.Enabled=!requested;
         if(!requested) {
-            clickTimer.Stop();systemTimer.Stop();systemSource=null;
+            clickTimer.Stop();
             placement.Cancel();snap.Cancel();Capture=false;
             if(dismissButton!=null)dismissButton.Follow(Point.Empty,false);
             Hide();if(glass!=null)glass.Follow(Point.Empty,false);
@@ -212,9 +206,15 @@ class QuotaLabel : Form {
     }
     protected override void OnVisibleChanged(EventArgs e) {
         base.OnVisibleChanged(e);
-        if(!Visible){clickTimer.Stop();systemTimer.Stop();systemSource=null;}
-        else if(SystemMode && SystemEnabled && !closing){SampleSystem();systemTimer.Start();}
+        if(!Visible)clickTimer.Stop();
+        UpdateInteractionTimer();
+        var handler=SamplingVisibilityChanged;if(handler!=null)handler();
         if(!Visible && dismissButton!=null)dismissButton.Follow(Point.Empty,false);
+    }
+    void UpdateInteractionTimer() {
+        if(closing || !Visible || trayMenuOpen){interactionTimer.Stop();return;}
+        interactionTimer.Interval=(placement!=null && (placement.Active || snap.Active))?16:100;
+        interactionTimer.Start();
     }
     Color WithOpacity(Color c) {return Color.FromArgb((int)Math.Round(255*opacityPercent/100.0),c.R,c.G,c.B);}
     void UpdateAppearanceMenu() {
@@ -225,7 +225,7 @@ class QuotaLabel : Form {
     internal void SetFrostedGlass(bool enabled) {
         if(closing)return;
         if(DefaultAppearance)defaultFrostedGlass=enabled;else petFrostedGlass=enabled;
-        desktopBackground=null;UpdateAppearanceMenu();SaveAppearance();RenderFrame();
+        desktopBackground=null;UpdateAppearanceMenu();NotifySettingsChanged();RenderFrame();
         if(!DefaultAppearance){RefreshBackground();RenderFrame();}
     }
     internal void SetDefaultAppearance(bool useDefault) {
@@ -234,7 +234,7 @@ class QuotaLabel : Form {
         if(useDefault)codexDark=ReadCodexTheme() ?? codexDark;
         desktopBackground=null;
         panelColor=useDefault?BubbleAppearance.Surface(codexDark):WithOpacity(petColour);
-        UpdateAppearanceMenu();SaveAppearance();RenderFrame();
+        UpdateAppearanceMenu();NotifySettingsChanged();RenderFrame();
         if(!useDefault){RefreshBackground();RenderFrame();}
     }
     internal void RefreshCodexAppearance() {
@@ -246,12 +246,9 @@ class QuotaLabel : Form {
         RenderFrame();
     }
     internal void SetMode(bool system) {
-        if(closing || SystemMode==system || (system?!SystemEnabled:!QuotaEnabled))return;
-        clickTimer.Stop();systemTimer.Stop();systemSource=null;
-        SystemMode=system;UpdateModeLabels();SaveAppearance();
-        if(SystemMode && Visible && bubbleRequested){SampleSystem();systemTimer.Start();}
-        RenderFrame();
-        Program.Record("bubble-mode",new {mode=SystemMode?"system":"quota"});
+        // A user intent; only the feature can apply a new content state.
+        if(closing)return;
+        var handler=ModeRequested;if(handler!=null)handler(system);
     }
     void UpdateModeLabels() {
         Text=SystemMode?"System usage":"Quota remaining";
@@ -261,33 +258,27 @@ class QuotaLabel : Form {
         refreshTip.SetToolTip(this,QuotaEnabled && SystemEnabled?
             "Click to refresh; double-click to switch Quota / System; drag to reposition":"Click to refresh; drag to reposition");
     }
-    internal void SetEnabledModes(bool quota,bool system) {
+    internal void ApplyContent(BubbleContentState state) {
         if(closing)return;
-        clickTimer.Stop();QuotaEnabled=quota;SystemEnabled=system;
-        if(!system){systemTimer.Stop();systemSource=null;}
-        if(SystemMode && !system && quota)SetMode(false);
-        else if(!SystemMode && !quota && system)SetMode(true);
-        UpdateModeLabels();SaveAppearance();Follow();RenderFrame();
+        clickTimer.Stop();content=state;
+        UpdateModeLabels();Follow();RenderFrame();
     }
     internal void RefreshCurrent() {
         if(closing || !AnyModeEnabled)return;
         RefreshCodexAppearance();
-        if(SystemMode)SampleSystem(true);
-        else {var handler=RefreshRequested;if(handler!=null)handler();}
+        var handler=RefreshRequested;if(handler!=null)handler();
     }
-    void SampleSystem(bool manual=false) {
-        if(closing || !SystemMode || !SystemEnabled || (!manual && (!Visible || !bubbleRequested)))return;
-        if(systemSource==null)systemSource=new SystemMetricsSource();
-        try {systemMetrics=systemSource.Read();}
-        catch(Exception e) {systemMetrics=new SystemMetrics();systemSource=null;Program.Record("system-metrics-error",new {error=e.GetType().Name});}
+    internal void PresentSystem(SystemMetrics metrics,bool manual) {
+        if(closing)return;
+        systemMetrics=metrics;
         // System refreshes independently of quota. Low-opacity ink must follow
         // the current desktop rather than wait for the five-minute quota timer.
         if(manual || opacityPercent==10 || opacityPercent==20)RefreshBackground();
-        if(!Visible || !bubbleRequested)systemSource=null;
         RenderFrame();
     }
     void RefreshBackground() {
         if(closing || trayMenuOpen || DefaultAppearance || !Visible || !bubbleRequested)return;
+        BackgroundReads++;
         var background=ReadBackground(Bounds,panelColor);
         // Capture failure must not discard the last known background.
         if(background.HasValue)desktopBackground=background;
@@ -296,7 +287,7 @@ class QuotaLabel : Form {
         if(DefaultAppearance)return;
         opacityPercent=percent;panelColor=WithOpacity(panelColor);
         foreach(var item in opacityChoices)item.Checked=(int)item.Tag==percent;
-        SaveAppearance();
+        NotifySettingsChanged();
         // Commit the new tint before sampling: the sampler removes this alpha
         // from the visible glass. Movement and ordinary repaint never sample.
         RenderFrame();
@@ -304,12 +295,11 @@ class QuotaLabel : Form {
         RenderFrame();
         Program.Record("opacity-changed",new {percent=opacityPercent,alpha=panelColor.A});
     }
-    void SaveAppearance() {
-        try {File.WriteAllText(AppearancePath,new JavaScriptSerializer().Serialize(new {
-            opacityPercent=opacityPercent,panelCorner=placement.Preferred,bubbleMode=SystemMode?"system":"quota",
-            quotaEnabled=QuotaEnabled,systemEnabled=SystemEnabled,appearanceMode=DefaultAppearance?"default":"pet",
-            defaultFrostedGlass=defaultFrostedGlass,petFrostedGlass=petFrostedGlass }));}
-        catch(IOException e) {Program.Record("appearance-error",new { error=e.GetType().Name });}
+    void NotifySettingsChanged() {var handler=SettingsChanged;if(handler!=null)handler();}
+    internal void CopyAppearanceTo(BubbleSettings settings) {
+        settings.OpacityPercent=opacityPercent;settings.PanelCorner=placement.Preferred;
+        settings.DefaultAppearance=DefaultAppearance;
+        settings.DefaultFrostedGlass=defaultFrostedGlass;settings.PetFrostedGlass=petFrostedGlass;
     }
     protected override CreateParams CreateParams {
         get { var p=base.CreateParams; p.ExStyle |= 0x08000000 | 0x00000080 | 0x00080000; return p; }
@@ -318,6 +308,7 @@ class QuotaLabel : Form {
         if(m.Msg==0x21){m.Result=new IntPtr(3);return;} // MA_NOACTIVATE, keep editor focus.
         base.WndProc(ref m);
         if(m.Msg==0x1A || m.Msg==0x31A)RefreshCodexAppearance(); // Settings / theme changed.
+        if(m.Msg==0x7E || m.Msg==0x2E0)Follow(); // Display layout / DPI changed.
     }
     Rectangle PetBounds {get{return new Rectangle(anchor.X,anchor.Y,petSize,(int)Math.Ceiling(petSize*208.0/192));}}
     protected override void OnMouseDown(MouseEventArgs e) {
@@ -327,12 +318,13 @@ class QuotaLabel : Form {
             clickTimer.Stop();placement.Cancel();Capture=false;Cursor=Cursors.Hand;SetMode(!SystemMode);return;
         }
         snap.Cancel();placement.Begin(PointToScreen(e.Location),Location);
+        UpdateInteractionTimer();
         Capture=true;Cursor=Cursors.SizeAll;
         Program.Record("panel-drag-start",new { corner=placement.Preferred });
     }
     protected override void OnMouseMove(MouseEventArgs e) {
         base.OnMouseMove(e);
-        Native.POINT hover;if(Native.GetCursorPos(out hover))UpdateDismissButton(Location,new Point(hover.X,hover.Y));
+        var hover=ReadHoverPointer();if(hover.HasValue)UpdateDismissButton(Location,hover.Value);
         if(!placement.Active)return;
         placement.Move(PointToScreen(e.Location));
         if(placement.HasMoved)clickTimer.Stop();
@@ -355,7 +347,8 @@ class QuotaLabel : Form {
         if(cancel)placement.Cancel();else committed=placement.End(pointer,PetBounds);
         Capture=false;Cursor=Cursors.Hand;
         if(moved)snap.Begin(new Point(from.X-anchor.X,from.Y-anchor.Y),watch.ElapsedMilliseconds);
-        if(committed)SaveAppearance();
+        UpdateInteractionTimer();
+        if(committed)NotifySettingsChanged();
         Program.Record("panel-drag-end",new { cancelled=cancel,moved=moved,corner=placement.Preferred });
         // Only a real mouse-up inside the rounded body is a refresh. Timer-based
         // release recovery, capture loss and any gesture that crossed 4px are not.
@@ -383,6 +376,7 @@ class QuotaLabel : Form {
     protected override void OnPaint(PaintEventArgs e) { RenderFrame(); }
     void RenderFrame() {
         if(!IsHandleCreated || closing)return;
+        FramesRendered++;
         if(glass!=null && glass.Ready){glass.SetShadowTheme(codexDark);glass.SetBlurEnabled(FrostedGlass);glass.SetTint(panelColor);}
         if(dismissButton!=null)dismissButton.SetColour(panelColor,DefaultAppearance,codexDark);
         using(var bitmap=new Bitmap(Width,Height,System.Drawing.Imaging.PixelFormat.Format32bppPArgb)) {
@@ -500,6 +494,6 @@ class QuotaLabel : Form {
                 deltaX=anchorKnown?anchor.X-lastAnchor.X:0, deltaY=anchorKnown?anchor.Y-lastAnchor.Y:0 });
             lastAnchor=anchor;lastLabel=desired;
         }
-        Native.POINT hover;if(Native.GetCursorPos(out hover))UpdateDismissButton(desired,new Point(hover.X,hover.Y));
+        var hover=ReadHoverPointer();if(hover.HasValue)UpdateDismissButton(desired,hover.Value);
     }
 }

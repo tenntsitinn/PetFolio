@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Windows.Forms;
 
 // Owns the shared bubble; each enabled mode controls its own data resources.
@@ -10,8 +11,13 @@ sealed class QuotaFeature : ICompanionFeature {
     readonly Action<Action> dispatch;
     readonly Action<QuotaSnapshot> persist;
     readonly Action<string, object> record;
+    readonly BubbleSettingsStore settingsStore;
+    readonly Func<ISystemMetricsSource> createSystemSource;
+    BubbleSettings settings;
+    BubbleContentState content;
     QuotaLabel view;
     QuotaService quota;
+    SystemMetricsService system;
     ToolStripMenuItem refresh;
     readonly ToolStripMenuItem quotaOption=new ToolStripMenuItem("Quota remaining");
     readonly ToolStripMenuItem systemOption=new ToolStripMenuItem("System usage");
@@ -21,10 +27,14 @@ sealed class QuotaFeature : ICompanionFeature {
     public ToolStripItem[] Commands { get; private set; }
     public ToolStripItem[] FeatureOptions { get { return new ToolStripItem[]{quotaOption,systemOption}; } }
     internal QuotaLabel View { get { return view; } }
+    internal SystemMetricsService SystemService {get{return system;}}
     public QuotaFeature(string home, IPetStateSource pets, Func<IQuotaSource> createSource,
-        Action<Action> dispatch, Action<QuotaSnapshot> persist, Action<string, object> record) {
+        Action<Action> dispatch, Action<QuotaSnapshot> persist, Action<string, object> record,
+        BubbleSettingsStore settingsStore=null,Func<ISystemMetricsSource> createSystemSource=null) {
         this.home=home;this.pets=pets;this.createSource=createSource;
         this.dispatch=dispatch;this.persist=persist;this.record=record;
+        this.settingsStore=settingsStore ?? new BubbleSettingsStore(Path.Combine(Program.DataFolder,"appearance.json"),record);
+        this.createSystemSource=createSystemSource ?? (()=>new SystemMetricsSource());
         Commands=new ToolStripItem[0];
         quotaOption.Click+=(s,e)=>ToggleMode(false);
         systemOption.Click+=(s,e)=>ToggleMode(true);
@@ -33,40 +43,68 @@ sealed class QuotaFeature : ICompanionFeature {
         if(disposed)throw new ObjectDisposedException("QuotaFeature");
         if(IsRunning)return;
         try {
-            view=new QuotaLabel(home);
+            settings=settingsStore.Load();content=new BubbleContentState(settings);
+            view=new QuotaLabel(home,settings,content);
+            system=new SystemMetricsService(createSystemSource,record);system.Changed+=OnSystem;
             var handle=view.Handle;
             view.RefreshRequested+=OnRefreshRequested;
+            view.ModeRequested+=SelectMode;
+            view.SettingsChanged+=SaveSettings;
+            view.SamplingVisibilityChanged+=UpdateSystemSampling;
             pets.Changed+=OnPet;
             refresh=new ToolStripMenuItem("Refresh",null,(s,e)=>view.RefreshCurrent());
             var commands=new List<ToolStripItem>(view.Commands);commands.Add(refresh);Commands=commands.ToArray();
             view.UpdatePet(pets.Current);
-            UpdateQuotaService();UpdateOptions();
+            UpdateQuotaService();UpdateSystemSampling();UpdateOptions();
         }catch {Stop();throw;}
     }
     void OnPet(PetState state) { if(view!=null)view.UpdatePet(state); }
     void OnQuota(QuotaState state) { if(view!=null)view.Present(state); }
-    void OnRefreshRequested() { if(quota!=null)quota.Refresh(); }
+    void OnSystem(SystemMetrics metrics,bool manual) {if(view!=null)view.PresentSystem(metrics,manual);}
+    void OnRefreshRequested() {
+        if(content.SystemMode){if(content.SystemEnabled && system!=null)system.Refresh();}
+        else if(quota!=null)quota.Refresh();
+    }
+    void UpdateSystemSampling() {
+        if(system!=null)system.SetRunning(view!=null && content.SystemEnabled && content.SystemMode && view.Visible && view.BubbleRequested);
+    }
+    void SaveSettings() {
+        if(view==null)return;
+        view.CopyAppearanceTo(settings);content.CopyTo(settings);settingsStore.Save(settings);
+    }
+    void SelectMode(bool systemMode) {
+        if(view==null)return;
+        var next=content.Select(systemMode);if(next==content)return;
+        SetContent(next);SaveSettings();
+    }
+    void SetContent(BubbleContentState next) {
+        bool modeChanged=content.SystemMode!=next.SystemMode;
+        content=next;view.ApplyContent(content);UpdateSystemSampling();UpdateOptions();
+        if(modeChanged)record("bubble-mode",new {mode=content.SystemMode?"system":"quota"});
+    }
     void UpdateQuotaService() {
-        if(view.QuotaEnabled && quota==null) {
-            quota=new QuotaService(createSource(),dispatch,persist,record);
-            quota.Changed+=OnQuota;quota.Start();
-        }else if(!view.QuotaEnabled && quota!=null) {
+        if(content.QuotaEnabled && quota==null) {
+            var next=new QuotaService(createSource(),dispatch,persist,record);
+            try {next.Changed+=OnQuota;next.Start();quota=next;}
+            catch {next.Changed-=OnQuota;next.Dispose();throw;}
+        }else if(!content.QuotaEnabled && quota!=null) {
             quota.Changed-=OnQuota;quota.Dispose();quota=null;
         }
     }
     void UpdateOptions() {
-        quotaOption.Checked=view!=null && view.QuotaEnabled;
-        systemOption.Checked=view!=null && view.SystemEnabled;
-        if(refresh!=null)refresh.Enabled=view.AnyModeEnabled;
+        quotaOption.Checked=view!=null && content.QuotaEnabled;
+        systemOption.Checked=view!=null && content.SystemEnabled;
+        if(refresh!=null)refresh.Enabled=content.AnyEnabled;
     }
     void ToggleMode(bool system) {
         if(view==null)return;
-        bool oldQuota=view.QuotaEnabled,oldSystem=view.SystemEnabled;
+        var previous=content;
         try {
-            view.SetEnabledModes(system?oldQuota:!oldQuota,system?!oldSystem:oldSystem);
+            SetContent(content.Enable(system?content.QuotaEnabled:!content.QuotaEnabled,system?!content.SystemEnabled:content.SystemEnabled));
             UpdateQuotaService();
+            SaveSettings();
         }catch(Exception ex) {
-            view.SetEnabledModes(oldQuota,oldSystem);
+            SetContent(previous);
             record("feature-error",new {feature=system?"System usage":"Quota remaining",error=ex.GetType().Name});
             MessageBox.Show("Unable to change this feature.","PetFolio",MessageBoxButtons.OK,MessageBoxIcon.Error);
         }
@@ -76,8 +114,11 @@ sealed class QuotaFeature : ICompanionFeature {
     internal void SetTrayMenuOpen(bool open) {if(view!=null)view.SetTrayMenuOpen(open);}
     public void Stop() {
         pets.Changed-=OnPet;
+        if(system!=null){system.Changed-=OnSystem;system.Dispose();system=null;}
         if(quota!=null){quota.Changed-=OnQuota;quota.Dispose();quota=null;}
-        if(view!=null){view.RefreshRequested-=OnRefreshRequested;view.Close();view.Dispose();view=null;}
+        if(view!=null){view.RefreshRequested-=OnRefreshRequested;view.ModeRequested-=SelectMode;
+            view.SettingsChanged-=SaveSettings;view.SamplingVisibilityChanged-=UpdateSystemSampling;
+            view.Close();view.Dispose();view=null;}
         if(refresh!=null){refresh.Dispose();refresh=null;}
         Commands=new ToolStripItem[0];
     }

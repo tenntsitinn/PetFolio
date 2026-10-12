@@ -31,12 +31,14 @@ sealed class SystemMetrics {
 }
 
 // Read aggregate OS counters; no WMI, subprocesses or per-process sampling.
-sealed class SystemMetricsSource {
+interface ISystemMetricsSource {SystemMetrics Read();}
+
+sealed class SystemMetricsSource : ISystemMetricsSource {
     struct Traffic {internal long Received,Sent;internal double At;}
     readonly Dictionary<string,Traffic> traffic=new Dictionary<string,Traffic>();
     readonly Stopwatch clock=Stopwatch.StartNew();
     ulong oldIdle,oldKernel,oldUser;bool cpuKnown;
-    internal SystemMetrics Read() {
+    public SystemMetrics Read() {
         var result=new SystemMetrics();ulong idle,kernel,user;
         if(GetSystemTimes(out idle,out kernel,out user)) {
             if(cpuKnown)result.CpuPercent=SystemMetrics.Cpu(idle,kernel,user,oldIdle,oldKernel,oldUser);

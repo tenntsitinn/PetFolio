@@ -27,6 +27,7 @@ static class BubbleZOrderTests {
     }
     static void Run() {
         using(var bubble=new QuotaLabel("",true))using(var popup=new Form()) {
+            bubble.ReadHoverPointer=()=>new Point(bubble.Left+60,bubble.Top+30);
             popup.Text="Independent application flyout";popup.FormBorderStyle=FormBorderStyle.None;
             popup.ShowInTaskbar=false;popup.TopMost=true;popup.StartPosition=FormStartPosition.Manual;
             popup.Bounds=new Rectangle(350,200,800,600);

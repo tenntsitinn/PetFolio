@@ -192,8 +192,10 @@ PetFolio 讀取 Codex 的寵物設定與視窗狀態，不修改桌面端設定�
 | `pet-palettes.json` | 寵物配色、寵物 ID、源圖路徑及有效性資訊 |
 | `quota-snapshot.json` | 最近一次成功查詢的額度快照 |
 | `probe-events.jsonl` | 額度、寵物切換、位置及錯誤等診斷事件 |
+| `probe-events.previous.jsonl` | 最近一份輪替前的診斷事件 |
+| `pet-diagnostic.json` | 最近一次寵物識別結果、Windows／Codex 版本與螢幕縮放資訊 |
 
-分享原始碼或回報問題時，請避免附上含個人路徑、寵物識別資訊或帳號使用資料的原始快取與紀錄。診斷紀錄目前以附加方式寫入，尚未實作自動輪替。
+分享原始碼或回報問題時，請避免附上含個人路徑、寵物識別資訊或帳號使用資料的原始快取與紀錄。新診斷紀錄每份限制為 2 MiB，保留目前檔案及最近一份輪替檔；寫入失敗不影響氣泡操作，五秒後再嘗試。
 
 ### 可選：產生寵物配色快取
 
@@ -215,7 +217,9 @@ python .\build-pet-palettes.py --asar 'C:\path\to\resources\app.asar' --home 'C:
 | 層次 | 主要檔案 | 職責 |
 | --- | --- | --- |
 | 應用宿主 | `Program.cs`、`CompanionApplication.cs` | 單一執行個體、訊息迴圈、系統匣與功能註冊 |
-| 功能生命週期 | `ICompanionFeature.cs`、`QuotaFeature.cs` | 功能的啟用、停用、恢復與資源釋放 |
+| 功能生命週期 | `ICompanionFeature.cs`、`QuotaFeature.cs`、`BubbleContentState.cs` | 功能啟停、模式與開關、刷新路由及資源釋放 |
+| 偏好設定 | `BubbleSettingsStore.cs` | 舊設定讀取、欄位校驗與原子保存 |
+| 系統資料 | `SystemMetrics.cs`、`SystemMetricsService.cs` | 系統計數器、採樣週期、隱藏與恢復時的基線 |
 | 共用寵物狀態 | `PetStateService.cs` | 視窗識別、寵物位置、可見性與配色狀態 |
 | 額度資料 | `QuotaData.cs`、`QuotaService.cs`、`CodexQuotaSource.cs` | 型別化快照、刷新狀態、CLI 協定與子程序 |
 | 額度視窗 | `QuotaLabel.cs`、`CloseBubbleButton.cs` | 內容顯示、點擊、拖動及關閉操作 |
@@ -234,7 +238,7 @@ python .\build-pet-palettes.py --asar 'C:\path\to\resources\app.asar' --home 'C:
 .\test.ps1
 ```
 
-腳本在 `.test-build` 建置並執行啟動偵測、配色、寵物切換、拖動跟隨、相對位置、額度模型／服務／stdio 協定、功能生命週期及單擊刷新測試，結束後清理本次產生的測試執行檔。
+腳本在 `.test-build` 建置並執行啟動偵測、配色、寵物切換、拖動跟隨、相對位置、額度模型／服務／stdio 協定、設定存取、系統採樣、日誌輪替、寵物識別診斷、功能生命週期及單擊刷新測試，結束後清理本次產生的測試執行檔。PR 及 `main` 推送會執行 Windows CI 的測試、獨立建置與插件包驗證。
 
 協定測試使用本機假 CLI，不連接真實帳號或網路。部分測試建立獨立驗證視窗，不操作 Codex 客戶端；診斷紀錄可能留在測試目錄。可額外使用 `./test.ps1 -CheckLocalPalettes` 檢查使用者資料目錄中的配色快取；過期源圖會使此可選檢查失敗。
 
@@ -255,7 +259,13 @@ python .\build-pet-palettes.py --asar 'C:\path\to\resources\app.asar' --home 'C:
 
 ### 設計與診斷
 
-目前額度面板為 208 × 104 px，採 25 px 圓角，位於寵物左右兩側並保留 12 px 間距；上下區域留給原生 Status Bubble 與 Action Bar。跟隨計時器設定為 16 ms，這不是固定幀率保證。
+目前額度面板為 208 × 104 px，採 25 px 圓角，位於寵物左右兩側並保留 12 px 間距；上下區域留給原生 Status Bubble 與 Action Bar。寵物拖動時使用 16 ms 跟隨計時器，靜止時為 100 ms；氣泡拖動／吸附使用獨立 16 ms 互動計時器，靜止可見時以 100 ms 更新懸停，隱藏時停止。這些間隔不是固定幀率保證。
+
+系統匣 **Diagnostics** 顯示寵物未出現的原因、版本與螢幕資訊；`PetFolio.exe --status` 及插件狀態腳本在程式就緒時也會回傳 `diagnostics`。識別狀態改變或手動開啟診斷時更新 `pet-diagnostic.json`；停止後狀態命令不回傳過去執行個體的診斷。無法識別 Codex 套件版本時顯示 unavailable。
+
+使用 `./profile.ps1 -Seconds 8` 可在隔離資料目錄測量五種情境，不查詢真實帳號或修改 Codex 設定；它會短暫顯示驗證視窗。結果寫入 `.test-build/performance.json`。測量方式及本次基線見 [效能紀錄](docs/PERFORMANCE.md)。
+
+需要重複對照時使用 `./benchmark.ps1 -Seconds 30 -Warmup 10 -Rounds 5`，會凍結兩份建置並交替測量。明確加入 `-NativeDrag` 才會回放原生滑鼠輸入；執行時會移動滑鼠，結束後恢復位置。`summarize-benchmark.py` 使用 Python 標準庫驗證與彙總結果，Python 只用於報告分析。方法、限制與數據見 [五組長測](docs/CONTROLLED_BENCHMARK.md)。
 
 [design/](design/) 保存選定的設計素材。[描邊設計稿](design/quota-bubble-outline-preview.png) 與 [SVG 原稿](design/quota-bubble-outline-preview.svg) 是設計過程資料，並非目前版本的實機截圖；部分文字與版面已落後於程式實作。應用使用 [PetFolio 圖標原稿](design/petfolio-symbol-v12.svg)，程式及系統匣已嵌入書本、爪印與黃色書簽圖標。
 
@@ -493,8 +503,10 @@ These files are stored in `%LOCALAPPDATA%\PetFolio`, or an absolute directory sp
 | `pet-palettes.json` | Pet colors, IDs, source-image paths, and validity metadata |
 | `quota-snapshot.json` | Latest successful quota snapshot |
 | `probe-events.jsonl` | Diagnostic events for quota, pet changes, positioning, and errors |
+| `probe-events.previous.jsonl` | The most recent rotated diagnostic log |
+| `pet-diagnostic.json` | Last pet-discovery result, Windows/Codex versions, and display scaling |
 
-Avoid sharing raw caches and logs containing personal paths, pet identifiers, or account usage data. Diagnostic logs currently append indefinitely; automatic rotation is not implemented.
+Avoid sharing raw caches and logs containing personal paths, pet identifiers, or account usage data. New diagnostic logs are limited to 2 MiB each, retaining the current file and one previous file. Write failures do not interrupt bubble operations; logging retries after five seconds.
 
 #### Optional: generate a pet palette cache
 
@@ -517,7 +529,9 @@ The project currently uses **explicit feature registration within a single proce
 | --- | --- | --- |
 | Application host | `Program.cs`, `CompanionApplication.cs` | Single instance, message loop, tray, and feature registration |
 | Startup discovery | `StartupConfiguration.cs` | Shared CLI and desktop-data discovery for EXE and script launches |
-| Feature lifecycle | `ICompanionFeature.cs`, `QuotaFeature.cs` | Enable, disable, restore, and release resources |
+| Feature lifecycle | `ICompanionFeature.cs`, `QuotaFeature.cs`, `BubbleContentState.cs` | Feature lifecycle, modes and switches, refresh routing, and resource ownership |
+| Preferences | `BubbleSettingsStore.cs` | Legacy settings, field validation, and atomic saves |
+| System data | `SystemMetrics.cs`, `SystemMetricsService.cs` | OS counters, sampling lifecycle, and baseline resets on hide and restore |
 | Shared pet state | `PetStateService.cs` | Window identification, position, visibility, and color state |
 | Quota data | `QuotaData.cs`, `QuotaService.cs`, `CodexQuotaSource.cs` | Typed snapshots, refresh state, CLI protocol, and subprocesses |
 | Quota window | `QuotaLabel.cs`, `CloseBubbleButton.cs` | Content, clicks, dragging, and close controls |
@@ -536,7 +550,7 @@ Run from the project root:
 .\test.ps1
 ```
 
-The script builds and runs startup discovery, colors, pet switching, drag following, placement, quota model/service/stdio protocol, feature lifecycle, and click-refresh tests in `.test-build`, then removes the generated test executables.
+The script builds and runs startup discovery, colors, pet switching, drag following, placement, quota model/service/stdio protocol, preferences, system sampling, log rotation, pet diagnostics, feature lifecycle, and click-refresh tests in `.test-build`, then removes the generated test executables. Pull requests and pushes to `main` run Windows CI tests, an isolated build, and plugin payload checks.
 
 Protocol tests use a local fake CLI without real accounts or network access. Some tests create independent verification windows; they do not operate the Codex client. Diagnostic logs may remain in the test directory. Use `./test.ps1 -CheckLocalPalettes` to additionally validate source metadata in the user data palette cache; stale sources fail this optional check.
 
@@ -557,7 +571,13 @@ This tool briefly displays a test backdrop and writes screenshots to its output 
 
 #### Design and diagnostics
 
-The quota panel is currently 208 × 104 px with 25 px rounded corners and a 12 px gap beside the pet. Upper and lower areas are reserved for the native Status Bubble and Action Bar. The follow timer uses a 16 ms interval; this is not a frame-rate guarantee.
+The quota panel is currently 208 × 104 px with 25 px rounded corners and a 12 px gap beside the pet. Upper and lower areas are reserved for the native Status Bubble and Action Bar. Pet following uses a 16 ms timer during dragging and 100 ms while idle. A separate interaction timer handles panel dragging/snapping at 16 ms and visible hover checks at 100 ms, stopping when hidden. These intervals are not frame-rate guarantees.
+
+Tray **Diagnostics** explains missing pets and shows versions and display information. `PetFolio.exe --status` and plugin status scripts also return `diagnostics` while the companion is ready. The report updates on discovery-status changes or when opened manually; stopped status does not expose an earlier session's report. Unknown Codex package versions are shown as unavailable.
+
+Run `./profile.ps1 -Seconds 8` to measure five isolated scenarios without querying real accounts or modifying Codex settings. It briefly displays verification windows and writes `.test-build/performance.json`. See [performance measurements](docs/PERFORMANCE.md) for methodology and the current baseline.
+
+For repeated comparisons, run `./benchmark.ps1 -Seconds 30 -Warmup 10 -Rounds 5`. It freezes two builds and alternates their order. Native mouse input is replayed only with explicit `-NativeDrag`; the pointer moves during the run and is restored afterwards. `summarize-benchmark.py` validates and aggregates results using Python's standard library; Python is needed only for report analysis. See [five-pair measurements](docs/CONTROLLED_BENCHMARK.md) for methodology, limits, and data.
 
 [design/](design/) contains selected assets. The [outline preview](design/quota-bubble-outline-preview.png) and its [SVG source](design/quota-bubble-outline-preview.svg) are design studies rather than screenshots of the current application; some text and layout are outdated. The application and tray use the embedded book, paw, and yellow-bookmark icon from the [PetFolio SVG](design/petfolio-symbol-v12.svg).
 

@@ -21,6 +21,7 @@ static class TrayOverlapTests {
             menu.Opening+=(s,e)=>bubble.SetTrayMenuOpen(true);
             menu.Closed+=(s,e)=>host.BeginInvoke(new Action(()=>bubble.SetTrayMenuOpen(menu.Visible)));
             var position=new Point(500,350);var pointer=new Point(560,380);
+            bubble.ReadHoverPointer=()=>pointer;
             var appearance=(ToolStripMenuItem)menu.Items[0];
             int stage=0,cycle=0;var size=bubble.Size;
             host.Shown+=(s,e)=>{

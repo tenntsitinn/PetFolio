@@ -1,0 +1,395 @@
+{
+  "method": "Same snapshot with config cache, changed-state suppression and idle timer changes disabled.",
+  "rounds": 5,
+  "seconds": 30,
+  "warmup": 10,
+  "nativeInput": false,
+  "scenarios": {
+    "moving-quota": {
+      "reference": {
+        "cpuCorePercent": {
+          "n": 5,
+          "median": 3.3331112259116096,
+          "q1": 2.604077025655187,
+          "q3": 3.3844158948865486,
+          "min": 2.3437495937500703,
+          "max": 3.905510127143147
+        },
+        "hostCpuPercent": {
+          "n": 5,
+          "median": 5.718098089628009,
+          "q1": 5.068644674344458,
+          "q3": 8.359375000000002,
+          "min": 3.5123697916666696,
+          "max": 9.27348479916672
+        },
+        "workingSetMiB": {
+          "n": 5,
+          "median": 54.546875,
+          "q1": 54.52734375,
+          "q3": 54.625,
+          "min": 54.4296875,
+          "max": 54.8046875
+        },
+        "privateMiB": {
+          "n": 5,
+          "median": 35.15625,
+          "q1": 35.140625,
+          "q3": 35.16015625,
+          "min": 35.04296875,
+          "max": 35.21875
+        },
+        "managedKiB": {
+          "n": 5,
+          "median": 6743.0234375,
+          "q1": 6736.625,
+          "q3": 6790.3203125,
+          "min": 6699.6640625,
+          "max": 6827.3984375
+        },
+        "gen0Collections": {
+          "n": 5,
+          "median": 2,
+          "q1": 2.0,
+          "q3": 2.0,
+          "min": 2,
+          "max": 2
+        },
+        "selectionReads": {
+          "n": 5,
+          "median": 250,
+          "q1": 249.0,
+          "q3": 250.0,
+          "min": 248,
+          "max": 250
+        },
+        "stateReads": {
+          "n": 5,
+          "median": 248,
+          "q1": 248.0,
+          "q3": 248.0,
+          "min": 246,
+          "max": 250
+        },
+        "publications": {
+          "n": 5,
+          "median": 1200,
+          "q1": 1199.0,
+          "q3": 1200.0,
+          "min": 1197,
+          "max": 1200
+        },
+        "frames": {
+          "n": 5,
+          "median": 0,
+          "q1": 0.0,
+          "q3": 0.0,
+          "min": 0,
+          "max": 0
+        },
+        "backgroundReads": {
+          "n": 5,
+          "median": 0,
+          "q1": 0.0,
+          "q3": 0.0,
+          "min": 0,
+          "max": 0
+        },
+        "motionInputs": {
+          "n": 5,
+          "median": 274,
+          "q1": 274.0,
+          "q3": 274.0,
+          "min": 274,
+          "max": 274
+        },
+        "observedMotionUpdates": {
+          "n": 5,
+          "median": 248,
+          "q1": 247.0,
+          "q3": 248.0,
+          "min": 245,
+          "max": 250
+        },
+        "draggingUpdates": {
+          "n": 5,
+          "median": 0,
+          "q1": 0.0,
+          "q3": 0.0,
+          "min": 0,
+          "max": 0
+        },
+        "latencyMedianMs": {
+          "n": 5,
+          "median": 48.31430000000546,
+          "q1": 38.90504999999939,
+          "q3": 50.01930000000084,
+          "min": 37.50155000000086,
+          "max": 51.614300000001094
+        },
+        "latencyP95Ms": {
+          "n": 5,
+          "median": 97.19712000000071,
+          "q1": 96.86297500000036,
+          "q3": 97.44269999999887,
+          "min": 96.30216000000073,
+          "max": 101.21967500000059
+        },
+        "updateIntervalMedianMs": {
+          "n": 5,
+          "median": 123.05769999999757,
+          "q1": 122.78390000000218,
+          "q3": 123.19475000000057,
+          "min": 122.57729999999901,
+          "max": 123.9471999999987
+        },
+        "updateIntervalP95Ms": {
+          "n": 5,
+          "median": 131.1843499999997,
+          "q1": 130.8298900000009,
+          "q3": 133.80158000000046,
+          "min": 130.69523999999873,
+          "max": 133.97990000000073
+        },
+        "observableUpdatesPerSecond": {
+          "n": 5,
+          "median": 8.264222935944508,
+          "q1": 8.23304992431144,
+          "q3": 8.266115840260792,
+          "min": 8.166665251111356,
+          "max": 8.33175493790538
+        },
+        "cpuMillisecondsPerObservedUpdate": {
+          "n": 5,
+          "median": 4.032258064516129,
+          "q1": 3.1629554655870447,
+          "q3": 4.095262096774194,
+          "min": 2.8698979591836733,
+          "max": 4.6875
+        },
+        "coalescedInputPercent": {
+          "n": 5,
+          "median": 9.48905109489051,
+          "q1": 9.48905109489051,
+          "q3": 9.85401459854015,
+          "min": 8.75912408759124,
+          "max": 10.58394160583942
+        }
+      },
+      "optimized": {
+        "cpuCorePercent": {
+          "n": 5,
+          "median": 3.0200900086464717,
+          "q1": 2.6559842776263047,
+          "q3": 3.4894001747181624,
+          "min": 2.3958264413392705,
+          "max": 3.9579990803110014
+        },
+        "hostCpuPercent": {
+          "n": 5,
+          "median": 5.5013020833333375,
+          "q1": 5.221524138155543,
+          "q3": 6.9498697916666625,
+          "min": 5.026678813118169,
+          "max": 9.217204580947424
+        },
+        "workingSetMiB": {
+          "n": 5,
+          "median": 54.47265625,
+          "q1": 54.45703125,
+          "q3": 54.515625,
+          "min": 54.4375,
+          "max": 54.80078125
+        },
+        "privateMiB": {
+          "n": 5,
+          "median": 35.171875,
+          "q1": 35.16796875,
+          "q3": 35.1953125,
+          "min": 35.16796875,
+          "max": 35.19921875
+        },
+        "managedKiB": {
+          "n": 5,
+          "median": 4286.8984375,
+          "q1": 4254.3046875,
+          "q3": 4294.09375,
+          "min": 4251.3515625,
+          "max": 4512.6875
+        },
+        "gen0Collections": {
+          "n": 5,
+          "median": 2,
+          "q1": 2.0,
+          "q3": 2.0,
+          "min": 2,
+          "max": 2
+        },
+        "selectionReads": {
+          "n": 5,
+          "median": 0,
+          "q1": 0.0,
+          "q3": 0.0,
+          "min": 0,
+          "max": 0
+        },
+        "stateReads": {
+          "n": 5,
+          "median": 274,
+          "q1": 274.0,
+          "q3": 275.0,
+          "min": 274,
+          "max": 275
+        },
+        "publications": {
+          "n": 5,
+          "median": 274,
+          "q1": 274.0,
+          "q3": 275.0,
+          "min": 274,
+          "max": 275
+        },
+        "frames": {
+          "n": 5,
+          "median": 0,
+          "q1": 0.0,
+          "q3": 0.0,
+          "min": 0,
+          "max": 0
+        },
+        "backgroundReads": {
+          "n": 5,
+          "median": 0,
+          "q1": 0.0,
+          "q3": 0.0,
+          "min": 0,
+          "max": 0
+        },
+        "motionInputs": {
+          "n": 5,
+          "median": 274,
+          "q1": 274.0,
+          "q3": 274.0,
+          "min": 274,
+          "max": 274
+        },
+        "observedMotionUpdates": {
+          "n": 5,
+          "median": 274,
+          "q1": 273.0,
+          "q3": 274.0,
+          "min": 273,
+          "max": 274
+        },
+        "draggingUpdates": {
+          "n": 5,
+          "median": 0,
+          "q1": 0.0,
+          "q3": 0.0,
+          "min": 0,
+          "max": 0
+        },
+        "latencyMedianMs": {
+          "n": 5,
+          "median": 82.71320000000105,
+          "q1": 81.8096000000005,
+          "q3": 86.1958999999988,
+          "min": 51.05019999999968,
+          "max": 98.26720000000205
+        },
+        "latencyP95Ms": {
+          "n": 5,
+          "median": 89.01205499999996,
+          "q1": 88.35834000000105,
+          "q3": 103.68073999999906,
+          "min": 55.40301999999928,
+          "max": 105.14387999999963
+        },
+        "updateIntervalMedianMs": {
+          "n": 5,
+          "median": 109.44394999999986,
+          "q1": 109.3076000000001,
+          "q3": 109.56684999999925,
+          "min": 109.16549999999916,
+          "max": 109.63999999999942
+        },
+        "updateIntervalP95Ms": {
+          "n": 5,
+          "median": 118.80880000000033,
+          "q1": 118.4686999999998,
+          "q3": 118.81646000000036,
+          "min": 118.02098000000024,
+          "max": 119.66277499999977
+        },
+        "observableUpdatesPerSecond": {
+          "n": 5,
+          "median": 9.131085929590437,
+          "q1": 9.099973822408638,
+          "q3": 9.132562088464963,
+          "min": 9.099089666409174,
+          "max": 9.132853949829506
+        },
+        "cpuMillisecondsPerObservedUpdate": {
+          "n": 5,
+          "median": 3.3074817518248176,
+          "q1": 2.918956043956044,
+          "q3": 3.820711678832117,
+          "min": 2.6327838827838828,
+          "max": 4.333941605839416
+        },
+        "coalescedInputPercent": {
+          "n": 5,
+          "median": 0.0,
+          "q1": 0.0,
+          "q3": 0.36496350364964014,
+          "min": 0.0,
+          "max": 0.36496350364964014
+        }
+      },
+      "paired": [
+        {
+          "cpuCorePercentagePointDecrease": 0.9885894535472781,
+          "relativeCpuDecreasePercent": 29.210046408330594,
+          "hostCpuPercentagePointChange": -0.21679600629467188
+        },
+        {
+          "cpuCorePercentagePointDecrease": 1.2495258495168424,
+          "relativeCpuDecreasePercent": 31.99392163478684,
+          "hostCpuPercentagePointChange": 0.1528794638110842
+        },
+        {
+          "cpuCorePercentagePointDecrease": -0.6763404148964014,
+          "relativeCpuDecreasePercent": -28.85719603749291,
+          "hostCpuPercentagePointChange": 1.5143090214514991
+        },
+        {
+          "cpuCorePercentagePointDecrease": -0.6248878543993919,
+          "relativeCpuDecreasePercent": -18.747884845291484,
+          "hostCpuPercentagePointChange": -0.056280218219296074
+        },
+        {
+          "cpuCorePercentagePointDecrease": -0.8853231490629754,
+          "relativeCpuDecreasePercent": -33.99757919373478,
+          "hostCpuPercentagePointChange": -1.4095052083333393
+        }
+      ],
+      "pairedCpuDecrease": {
+        "n": 5,
+        "median": -0.6248878543993919,
+        "q1": -0.6763404148964014,
+        "q3": 0.9885894535472781,
+        "min": -0.8853231490629754,
+        "max": 1.2495258495168424
+      },
+      "pairedRelativeCpuDecreasePercent": {
+        "n": 5,
+        "median": -18.747884845291484,
+        "q1": -28.85719603749291,
+        "q3": 29.210046408330594,
+        "min": -33.99757919373478,
+        "max": 31.99392163478684
+      },
+      "lowerCpuPairs": 2
+    }
+  }
+}
