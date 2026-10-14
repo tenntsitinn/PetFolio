@@ -59,7 +59,8 @@ sealed class CompanionApplication : ApplicationContext
             };
             var quota = new QuotaFeature(home, pets, () => new CodexQuotaSource(executable), Dispatch,
                 snapshot => File.WriteAllText(Path.Combine(Program.DataFolder, "quota-snapshot.json"),
-                new JavaScriptSerializer().Serialize(snapshot.ToRecord())), Program.Record);
+                new JavaScriptSerializer().Serialize(snapshot.ToRecord())), Program.Record,
+                refreshDisplayMetrics: pets.RefreshDisplayMetrics);
             Register(quota);
             menu.Opening += (s, e) => quota.SetTrayMenuOpen(true);
             // Resume after ToolStrip finishes closing its entire popup chain.

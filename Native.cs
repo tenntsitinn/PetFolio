@@ -57,6 +57,8 @@ static class Native
     [DllImport("user32.dll")]
     internal static extern bool GetCursorPos(out POINT point);
     [DllImport("user32.dll")]
+    internal static extern uint GetDpiForWindow(IntPtr hwnd);
+    [DllImport("user32.dll")]
     internal static extern short GetAsyncKeyState(int key);
     [DllImport("user32.dll")]
     internal static extern int GetSystemMetrics(int index);

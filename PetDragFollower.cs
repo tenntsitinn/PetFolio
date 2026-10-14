@@ -40,6 +40,16 @@ sealed class PetDragFollower
         releasedAt = now;
     }
 
+    internal void ChangeDpi(Point pointer, uint oldDpi, uint newDpi, Point savedAnchorAtStart)
+    {
+        // Single-screen coordinates share the desktop origin. Rebase the live
+        // drag, including a pending release, before accepting more mouse deltas.
+        current = PetDpi.Scale(current, oldDpi, newDpi);
+        savedAtStart = savedAnchorAtStart;
+        seed = current;
+        press = pointer;
+    }
+
     internal Point Resolve(Point savedAnchor, long now)
     {
         if (Active)
@@ -59,6 +69,19 @@ sealed class PetDragFollower
     static int Clamp(int n, int min, int max)
     {
         return Math.Max(min, Math.Min(Math.Max(min, max), n));
+    }
+}
+
+static class PetDpi
+{
+    internal static int Scale(int value, uint fromDpi, uint toDpi)
+    {
+        return (int)Math.Round(value * ((double)toDpi / fromDpi), MidpointRounding.AwayFromZero);
+    }
+
+    internal static Point Scale(Point value, uint fromDpi, uint toDpi)
+    {
+        return new Point(Scale(value.X, fromDpi, toDpi), Scale(value.Y, fromDpi, toDpi));
     }
 }
 

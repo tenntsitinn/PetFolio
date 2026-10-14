@@ -47,6 +47,7 @@ static class PetTrackingTests
         string config = Path.Combine(root, "config.toml"), state = Path.Combine(root, ".codex-global-state.json");
         var json = new JavaScriptSerializer();
         int candidates = 1;
+        uint fixtureDpi = 120;
         var callbacks = new ConcurrentQueue<Action>();
         int dispatched = 0;
         Action pump = () =>
@@ -72,7 +73,8 @@ static class PetTrackingTests
                 Interlocked.Increment(ref dispatched);
                 callbacks.Enqueue(a);
             },
-                () => candidates == 0 ? new List<IntPtr>() : candidates == 1 ? new List<IntPtr> { target.Handle } : new List<IntPtr> { target.Handle, target.Handle }))
+                () => candidates == 0 ? new List<IntPtr>() : candidates == 1 ? new List<IntPtr> { target.Handle } : new List<IntPtr> { target.Handle, target.Handle },
+                hwnd => fixtureDpi))
             {
                 target.ShowInTaskbar = false;
                 target.Bounds = new Rectangle(600, 400, 112, 122);
@@ -82,6 +84,25 @@ static class PetTrackingTests
                 pets.DiagnosticChanged += d => diagnostics++;
                 pets.Start();
                 Check(pets.Current.Visible && pets.Diagnostic.Reason == "ready", "Known fixture window binds with readable desktop state");
+                Check(pets.Current.Anchor == new Point(750, 500) && pets.Current.Size == 140, "Startup uses the discovered window DPI before publishing");
+                fixtureDpi = 96;
+                Invoke(pets, "Tick");
+                long dpiStateReads = pets.StateReads;
+                fixtureDpi = 120;
+                Invoke(pets, "Tick");
+                Check(pets.Current.Anchor == new Point(750, 500) && pets.Current.Size == 140, "Polling observes a DPI change without a state file write");
+                Check(pets.Current.Bounds.Contains(new Point(880, 640)), "Scaled hit bounds contain a pointer outside the old unscaled bounds");
+                Check(pets.StateReads == dpiStateReads, "DPI updates reuse original DIP metadata without parsing the file again");
+                fixtureDpi = 144;
+                pets.RefreshDisplayMetrics();
+                pump();
+                Check(pets.Current.Anchor == new Point(900, 600) && pets.Current.Size == 168, "Display notification refreshes position and size");
+                fixtureDpi = 0;
+                Invoke(pets, "Tick");
+                Check(pets.Current.Size == 168, "Transient DPI query failure preserves the last valid scale");
+                fixtureDpi = 96;
+                Invoke(pets, "Tick");
+                Check(pets.Current.Anchor == new Point(600, 400) && pets.Current.Size == 112, "Returning to 100% restores original DIP values");
                 long reads = pets.SelectionReads, stateReads = pets.StateReads;
                 int before = published;
                 for (int i = 0; i < 100; i++)
@@ -183,6 +204,14 @@ static class PetTrackingTests
                 }
 
                 Check(pets.Current.Size == 180, "Config notifications update size without a polling callback");
+                fixtureDpi = 120;
+                Invoke(pets, "Tick");
+                Check(pets.Current.Anchor == new Point(878, 500) && pets.Current.Size == 225, "Changed metadata is scaled from its original DIP values");
+                fixtureDpi = 144;
+                Invoke(pets, "Tick");
+                Check(pets.Current.Anchor == new Point(1053, 600) && pets.Current.Size == 270, "Repeated DPI changes do not accumulate rounded position error");
+                fixtureDpi = 96;
+                Invoke(pets, "Tick");
                 deadline.Restart();
                 while (deadline.ElapsedMilliseconds < 100)
                 {
