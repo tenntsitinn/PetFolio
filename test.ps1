@@ -12,8 +12,11 @@ $env:PETFOLIO_DATA_DIR = Join-Path $testRoot 'runtime-data'
 $suites = @(
     @{ Name = 'CodexMenuThemeTests'; Sources = @('CodexMenuThemeTests.cs', 'CodexMenuTheme.cs') },
     @{ Name = 'SystemMetricsTests'; Sources = @('SystemMetricsTests.cs', 'SystemMetrics.cs') },
+    @{ Name = 'SystemMetricsServiceTests'; Sources = @('SystemMetricsServiceTests.cs', 'SystemMetricsService.cs', 'SystemMetrics.cs') },
+    @{ Name = 'BubbleSettingsTests'; Sources = @('BubbleSettingsTests.cs', 'BubbleSettingsStore.cs', 'BubbleContentState.cs', 'PetPanelPlacement.cs') },
     @{ Name = 'StartupTests'; Sources = @('StartupTests.cs', 'StartupConfiguration.cs') },
     @{ Name = 'RuntimeDataTests'; Sources = @('RuntimeDataTests.cs', 'RuntimeData.cs') },
+    @{ Name = 'DiagnosticLogTests'; Sources = @('DiagnosticLogTests.cs', 'DiagnosticLog.cs') },
     @{ Name = 'CompanionSignalsTests'; Sources = @('CompanionSignalsTests.cs', 'CompanionSignals.cs') },
     @{ Name = 'CodexAutoStartTests'; Sources = @('CodexAutoStartTests.cs', 'CodexAutoStart.cs', 'CompanionSignals.cs') },
     @{ Name = 'ThemeTests'; Sources = @('ThemeTests.cs', 'PetTheme.cs') },
@@ -45,7 +48,7 @@ try {
         if ($LASTEXITCODE -ne 0) { throw ($result -join [Environment]::NewLine) }
         Write-Output ('{0}: {1}' -f $suite.Name, $result[-1])
     }
-    foreach ($suiteName in @('FeatureLifecycleTests', 'BubbleClickTests', 'BubbleThemeTests', 'TrayOverlapTests', 'BubbleZOrderTests', 'BubbleMaterialTests')) {
+    foreach ($suiteName in @('FeatureLifecycleTests', 'PetTrackingTests', 'BubbleClickTests', 'BubbleThemeTests', 'TrayOverlapTests', 'BubbleZOrderTests', 'BubbleMaterialTests')) {
         $lifecycleExecutable = Join-Path $testRoot ($suiteName + '.exe')
         $generated += $lifecycleExecutable
         & (Join-Path $projectRoot 'build.ps1') -OutputDirectory $testRoot -OutputName ($suiteName + '.exe') -EntryPoint $suiteName -Target 'exe' -AdditionalSources ($suiteName + '.cs')

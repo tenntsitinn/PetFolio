@@ -117,6 +117,9 @@ try {
         $ownsLaunch = $true
         $started = Invoke-TestScript 'start.ps1' $paths $cacheCopy
         Assert-Plugin ($started.Code -eq 0 -and $started.Result.running -and $started.Result.ready) 'Start must confirm host readiness.'
+        $liveStatus = Invoke-TestScript 'status.ps1' @() $cacheCopy
+        Assert-Plugin ($liveStatus.Result.diagnostics.reason -eq 'anchor-unavailable') 'Ready host status must explain missing pet bounds from the fake desktop state.'
+        Assert-Plugin ($liveStatus.Result.diagnostics.windows -match 'build' -and $liveStatus.Result.diagnostics.displays.Count -gt 0) 'Status diagnostics must include actual Windows build and monitor setup.'
         $testExecutable = Join-Path $cacheCopy 'bin\win-x64\PetFolio.exe'
         $firstIds = @(Get-Process PetFolio -ErrorAction SilentlyContinue | Where-Object { $_.Path -eq $testExecutable } | ForEach-Object { $_.Id })
         $second = Invoke-TestScript 'start.ps1' $paths $cacheCopy
@@ -130,6 +133,8 @@ try {
         Assert-Plugin (-not (Test-Path -LiteralPath (Join-Path $cacheCopy 'bin\win-x64\quota-snapshot.json'))) 'The plugin executable directory must remain free of runtime state.'
         $stopped = Invoke-TestScript 'stop.ps1' @() $cacheCopy
         Assert-Plugin ($stopped.Code -eq 0 -and -not $stopped.Result.running) 'Stop must await graceful shutdown.'
+        $afterStop = Invoke-TestScript 'status.ps1' @() $cacheCopy
+        Assert-Plugin ($null -eq $afterStop.Result.diagnostics) 'Stopped status must not expose a stale diagnosis from an earlier session.'
         $ownsLaunch = $false
         $stoppedAgain = Invoke-TestScript 'stop.ps1' @() $cacheCopy
         Assert-Plugin ($stoppedAgain.Code -eq 0 -and -not $stoppedAgain.Result.running) 'Repeated stop must be harmless.'

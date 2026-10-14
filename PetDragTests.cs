@@ -1,41 +1,82 @@
-using System;
+﻿using System;
 using System.Drawing;
 
-static class PetDragTests {
+static class PetDragTests
+{
     static int passed;
-    static void Check(bool value,string name) {if(!value)throw new Exception(name);passed++;}
-    static void Main() {
-        var d=new PetDragFollower();var area=new Rectangle(0,0,1920,1080);
-        var saved=new Point(500,400);
-        Check(d.Resolve(saved,0)==saved,"idle uses saved client position");
-        d.Begin(new Point(530,445),saved,saved);
-        d.Move(new Point(630,475),area,112,40);
-        Check(d.Resolve(saved,16)==new Point(600,430),"horizontal and vertical movement before save");
-        Check(d.Resolve(new Point(501,401),32)==new Point(600,430),"file change does not rewind active drag");
-        d.Move(new Point(730,545),area,112,40);
-        Check(d.Resolve(saved,48)==new Point(700,500),"fixed grab offset without cumulative drift");
+    static void Check(bool value, string name)
+    {
+        if (!value)
+            throw new Exception(name);
+        passed++;
+    }
+
+    static void Main()
+    {
+        var d = new PetDragFollower();
+        var area = new Rectangle(0, 0, 1920, 1080);
+        var saved = new Point(500, 400);
+        Check(d.Resolve(saved, 0) == saved, "idle uses saved client position");
+        d.Begin(new Point(530, 445), saved, saved);
+        d.Move(new Point(630, 475), area, 112, 40);
+        Check(d.Resolve(saved, 16) == new Point(600, 430), "horizontal and vertical movement before save");
+        Check(d.Resolve(new Point(501, 401), 32) == new Point(600, 430), "file change does not rewind active drag");
+        d.Move(new Point(730, 545), area, 112, 40);
+        Check(d.Resolve(saved, 48) == new Point(700, 500), "fixed grab offset without cumulative drift");
         d.End(64);
-        Check(!d.Active && d.Resolve(saved,80)==new Point(700,500),"release retains live position until save");
-        Check(d.Resolve(new Point(698,499),100)==new Point(698,499),"client position reconciles release");
-        Check(d.Resolve(new Point(710,505),116)==new Point(710,505),"later persisted motion follows normally");
-        d.Begin(new Point(720,530),new Point(710,505),new Point(710,505));
-        d.Move(new Point(-100,-100),area,112,40);
-        Check(d.Resolve(saved,120)==Point.Empty,"top and left display boundaries");
-        d.Move(new Point(5000,5000),area,112,40);
-        Check(d.Resolve(saved,130)==new Point(1808,918),"bottom and right match native mascot bounds");
-        var left=new Rectangle(-1920,40,1920,1040);
-        d.Move(new Point(-1000,500),left,112,40);
-        Check(d.Resolve(saved,140)==new Point(-1010,475),"negative monitor origin and work area top");
+        Check(!d.Active && d.Resolve(saved, 80) == new Point(700, 500), "release retains live position until save");
+        Check(d.Resolve(new Point(698, 499), 100) == new Point(698, 499), "client position reconciles release");
+        Check(d.Resolve(new Point(710, 505), 116) == new Point(710, 505), "later persisted motion follows normally");
+        d.Begin(new Point(720, 530), new Point(710, 505), new Point(710, 505));
+        d.Move(new Point(-100, -100), area, 112, 40);
+        Check(d.Resolve(saved, 120) == Point.Empty, "top and left display boundaries");
+        d.Move(new Point(5000, 5000), area, 112, 40);
+        Check(d.Resolve(saved, 130) == new Point(1808, 918), "bottom and right match native mascot bounds");
+        var left = new Rectangle(-1920, 40, 1920, 1040);
+        d.Move(new Point(-1000, 500), left, 112, 40);
+        Check(d.Resolve(saved, 140) == new Point(-1010, 475), "negative monitor origin and work area top");
         d.End(150);
-        Check(d.Resolve(new Point(710,505),2149)==new Point(-1010,475),"old save held within reconciliation grace");
-        Check(d.Resolve(new Point(710,505),2150)==new Point(710,505),"missing commit recovers after timeout");
-        d.Begin(new Point(520,440),saved,saved);d.End(2200);
-        Check(d.Resolve(saved,2210)==saved,"click without movement stays still");
-        d.Begin(new Point(520,440),saved,saved);d.Move(new Point(620,540),area,112,40);d.Reset();
-        Check(!d.Active && d.Resolve(saved,2220)==saved,"hidden or replaced target cancels drag");
-        d.Begin(new Point(520,440),saved,saved);d.Move(new Point(620,540),area,112,40);d.End(2300);
-        d.Begin(new Point(630,550),new Point(600,500),saved);d.Move(new Point(650,570),area,112,40);
-        Check(d.Resolve(saved,2316)==new Point(620,520),"second drag during release reconciliation keeps its rendered offset");
-        Console.WriteLine("Passed "+passed+" drag state checks.");
+        Check(d.Resolve(new Point(710, 505), 2149) == new Point(-1010, 475), "old save held within reconciliation grace");
+        Check(d.Resolve(new Point(710, 505), 2150) == new Point(710, 505), "missing commit recovers after timeout");
+        d.Begin(new Point(520, 440), saved, saved);
+        d.End(2200);
+        Check(d.Resolve(saved, 2210) == saved, "click without movement stays still");
+        d.Begin(new Point(520, 440), saved, saved);
+        d.Move(new Point(620, 540), area, 112, 40);
+        d.Reset();
+        Check(!d.Active && d.Resolve(saved, 2220) == saved, "hidden or replaced target cancels drag");
+        d.Begin(new Point(520, 440), saved, saved);
+        d.Move(new Point(620, 540), area, 112, 40);
+        d.End(2300);
+        d.Begin(new Point(630, 550), new Point(600, 500), saved);
+        d.Move(new Point(650, 570), area, 112, 40);
+        Check(d.Resolve(saved, 2316) == new Point(620, 520), "second drag during release reconciliation keeps its rendered offset");
+        Check(PetDpi.Scale(new Point(312, 713), 96, 120) == new Point(390, 891), "Reported 125% position uses physical pixels");
+        Check(PetDpi.Scale(112, 96, 120) == 140 && PetDpi.Scale(112, 96, 144) == 168, "Pet size scales with position");
+        Check(PetDpi.Scale(-713, 96, 120) == -891 && PetDpi.Scale(-2, 96, 120) == -3, "Negative coordinates round symmetrically");
+        Check(PetDpi.Scale(saved, 96, 96) == saved, "100% is an identity conversion");
+        Check(PetDpi.Scale(112, 96, 168) == 196 && PetDpi.Scale(112, 96, 192) == 224, "175% and 200% sizes stay in physical pixels");
+        Check(PetDpi.Scale(80, 96, 120) == 100 && PetDpi.Scale(224, 96, 144) == 336, "Minimum and maximum configured sizes scale after DIP validation");
+        d.Begin(new Point(550, 440), saved, saved);
+        d.Move(new Point(650, 540), area, 112, 40);
+        d.ChangeDpi(new Point(650, 540), 96, 120, new Point(625, 500));
+        Check(d.Active && d.Resolve(new Point(625, 500), 2400) == new Point(750, 625), "DPI change rebases an active drag in the new physical space");
+        d.Move(new Point(660, 550), area, 140, 50);
+        Check(d.Resolve(new Point(625, 500), 2416) == new Point(760, 635), "Mouse delta stays ten physical pixels after DPI change");
+        d.End(2500);
+        d.ChangeDpi(Point.Empty, 120, 144, new Point(750, 600));
+        Check(!d.Active && d.Resolve(new Point(750, 600), 2516) == new Point(912, 762), "DPI change preserves release reconciliation until save");
+        Check(d.Resolve(new Point(750, 600), 4500) == new Point(750, 600), "DPI change does not extend the release timeout");
+        var roundedSave = PetDpi.Scale(new Point(312, 713), 96, 120);
+        d.Begin(new Point(420, 920), roundedSave, roundedSave);
+        d.Move(new Point(430, 930), new Rectangle(0, 0, 3000, 2000), 140, 50);
+        d.End(5000);
+        var nextSave = PetDpi.Scale(new Point(312, 713), 96, 144);
+        d.ChangeDpi(Point.Empty, 120, 144, nextSave);
+        Check(d.Resolve(nextSave, 5016) == new Point(480, 1081), "Fractional saved coordinates cannot prematurely end release reconciliation");
+        d.Begin(Point.Empty, Point.Empty, Point.Empty);
+        d.Move(new Point(5000, 5000), area, PetDpi.Scale(112, 96, 120), PetDpi.Scale(40, 96, 120));
+        Check(d.Resolve(Point.Empty, 5100) == new Point(1780, 878), "Bottom reserve and pet dimensions share the physical coordinate space");
+        Console.WriteLine("Passed " + passed + " drag state checks.");
     }
 }

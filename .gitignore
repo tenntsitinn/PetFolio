@@ -9,6 +9,7 @@ appearance.json
 pet-palettes.json
 pet-palettes.json.tmp
 probe-events.jsonl
+probe-events.previous.jsonl
 quota-snapshot.json
 pet-diagnostic.json
 codex-autostart.json

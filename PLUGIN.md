@@ -50,4 +50,6 @@ codex plugin marketplace remove petfolio-local
 
 `test.ps1` 覆蓋資料遷移、升級保留偏好、控制信號及原有功能測試；測試使用隔離的 PetFolio 資料目錄。`test-plugin.ps1` 對新包測試清單、ZIP 內容、腳本輸出、含空格路徑、缺少依賴時的錯誤，並透過隔離 `CODEX_HOME` 安裝與卸載插件。`-TestLaunch` 額外使用假 CLI 與假桌面資料，驗證啟動、重複啟動及停止，會建立真實 Windows UI／系統匣。測試透過獨立 `PETFOLIO_INSTANCE_ID` 隔離控制信號，不會停止日常實例；正常使用保持預設單實例即可。
 
+執行中的狀態腳本會在 `diagnostics` 回傳寵物識別原因、Windows build、可識別的 Codex 套件版本及顯示器縮放。這是最近一次識別狀態變更的報告；系統匣 Diagnostics 可手動更新。程式未就緒或已停止時為 null，環境檢查仍不驗證帳號或額度。PR／main 的 Windows CI 使用 `-SkipCodexInstall` 驗證插件包，不安裝到真實 Codex 使用者目錄。
+
 這些檢查不驗證真實帳號額度、桌面 Pet 跟隨、多螢幕 DPI 或桌面 Plugins 界面的刷新。公開上架、授權條款與跨平台支援仍需另外處理。

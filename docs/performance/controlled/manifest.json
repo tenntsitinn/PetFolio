@@ -1,0 +1,509 @@
+{
+  "builds": [
+    {
+      "sources": [
+        {
+          "name": "BackdropGaussian.cs",
+          "sha256": "5CB53240FEE91C54E60C6D58D6B0712AFE3F0FA75434E80B40DC64BA74A3419C"
+        },
+        {
+          "name": "BubbleAppearance.cs",
+          "sha256": "8AB01402036AB5E95A5A6A6A9AE9F742DA5A90E3363CEE72B5794E7BCDC88022"
+        },
+        {
+          "name": "BubbleBackdrop.cs",
+          "sha256": "F063496CEE1ACB7AE063A224B5C8431CE0749C75D67AC80A3D8434F6235F5A08"
+        },
+        {
+          "name": "BubbleBackdropTests.cs",
+          "sha256": "9E33C004557C818877DB2EEF9A30F30A9289646E3A6ACA983AB742C7491F8464"
+        },
+        {
+          "name": "BubbleCaptureTests.cs",
+          "sha256": "98295F908A21369594244CB35AF4640F9A32AEF8765CB5ACC4CE79FCCBB9C20B"
+        },
+        {
+          "name": "BubbleClickTests.cs",
+          "sha256": "D02B3588AC614A7D6AF1230434DCD5DBEDE55125FAC93A2A82271C91872DD671"
+        },
+        {
+          "name": "BubbleContentState.cs",
+          "sha256": "64B0A4B5C38C37EF4AA0B8A312875BEBE33A8DB29F35C7980923CBFDC6282BF5"
+        },
+        {
+          "name": "BubbleLayout.cs",
+          "sha256": "254C79DAF97696DD29E99506769466B1E0ED62CCF632BDFB238F8B3291A1FE5C"
+        },
+        {
+          "name": "BubbleMaterialTests.cs",
+          "sha256": "1640DFD7ABE00C8CFA6633243ED136913A15E1508BF792F6B601E7EB0269A9D9"
+        },
+        {
+          "name": "BubbleSettingsStore.cs",
+          "sha256": "6E979A778ED6405372A2EC3DF85B7A3B35904061C56B2E3BC08F1A324F6BC109"
+        },
+        {
+          "name": "BubbleSettingsTests.cs",
+          "sha256": "2137016B9AD6E6A35F93C709DDC4E76F02C99ADC2B524098447F084468BA13F2"
+        },
+        {
+          "name": "BubbleThemeTests.cs",
+          "sha256": "51A8FBE583053F76F276556D72433816EEFA93159DD90DFDD1CAD8017803750A"
+        },
+        {
+          "name": "BubbleZOrderTests.cs",
+          "sha256": "D73F4E884DB81DB5AC9401F80243359BBFEA396DE6A54E8F2DBD822EC21472A8"
+        },
+        {
+          "name": "CloseBubbleButton.cs",
+          "sha256": "8F35A108B7D594F82D43AE99D61CD76A594F75B8A714D236DBDEEB11161A2F57"
+        },
+        {
+          "name": "CodexAutoStart.cs",
+          "sha256": "0E32DBE1B18E635DFE4CDC76FAEE1912EC427522347DA64B808ABAB449E61DB3"
+        },
+        {
+          "name": "CodexAutoStartTests.cs",
+          "sha256": "A76CD5C736850D686A2599F592A26BA5F89047285955BD5A6A46A74BEC98E4AC"
+        },
+        {
+          "name": "CodexMenuTheme.cs",
+          "sha256": "9505407681F2C365095C1644474218F6C83F61DC4C4785F1E01031A5385CFBB3"
+        },
+        {
+          "name": "CodexMenuThemeTests.cs",
+          "sha256": "7DCA9D3461E33E8DE56D506BA02286B8900ED2EE3195FBCA2BD99D4835F0ECC9"
+        },
+        {
+          "name": "CodexQuotaSource.cs",
+          "sha256": "AB12C140B7BA9BE8EE04154A874A165970D5227351FE7CC335080B1AF840D751"
+        },
+        {
+          "name": "CompanionApplication.cs",
+          "sha256": "2BA3558475B1004DCD28DAD3EAB9A267DBF33AF4D708C7F4334A07CA8CB40558"
+        },
+        {
+          "name": "CompanionSignals.cs",
+          "sha256": "D88E6ECFB1D7E69D56DC2F3728162043E08D6A201BF070506AB3BC06290C10D3"
+        },
+        {
+          "name": "CompanionSignalsTests.cs",
+          "sha256": "201FA48237833AFE65586D3A097FE41AC1CBF200C06EB525169AB4770B7C611C"
+        },
+        {
+          "name": "DiagnosticLog.cs",
+          "sha256": "6DDCCAF996EB4CD25BBAFA0248C6E86517342F0BA52FA23EE45E23856B129DB2"
+        },
+        {
+          "name": "DiagnosticLogTests.cs",
+          "sha256": "28D0F0A41A7FFCF599E96642A7BB7D97ACD0865095F84EB95931DD4BBB47E4CA"
+        },
+        {
+          "name": "FakeQuotaServer.cs",
+          "sha256": "486C877203962062BA34EA4782953243E9EB74A043D64EADE4E2B7C798D2D37D"
+        },
+        {
+          "name": "FeatureLifecycleTests.cs",
+          "sha256": "DAABC9911B42177983045ED2BFA43FB13A9222C230962743092FE1A5800CA9E6"
+        },
+        {
+          "name": "GlassBackdrop.cs",
+          "sha256": "E77D1FA25CD8FC725CE449D02C61726BB2E570F578437DA01B0B3B4FFAE3167E"
+        },
+        {
+          "name": "GlassVerification.cs",
+          "sha256": "74A3FBE8F4427EB01C134C72F7984D8153C139A5B38A74F1695D83F4BF016BED"
+        },
+        {
+          "name": "ICompanionFeature.cs",
+          "sha256": "CEBA7D42367D5656A93927A47A3AD37EBBA2676C5A47003CCCE7615993D946DF"
+        },
+        {
+          "name": "Inspect.cs",
+          "sha256": "D5E62DFDD453E614E7AB57478116A23782744168BA2AB880FCBE7E28FF52B3F6"
+        },
+        {
+          "name": "Native.cs",
+          "sha256": "C99AACAC8F79B413C1E51CE394CE2DB0841B153FF81CE229B5B33616871E7741"
+        },
+        {
+          "name": "PairedPerformanceProbe.cs",
+          "sha256": "46EA6EB2E93E823544EDE18A0C26F0481EC68A51C2311DB0CDF2BD33236E2F00"
+        },
+        {
+          "name": "PerformanceProbe.cs",
+          "sha256": "815EE2D60E2303255D71CE53F5A33841A7B5A2B4074DB09ED62CCE01232A892A"
+        },
+        {
+          "name": "PetColourSwitch.cs",
+          "sha256": "6090F5405C0F79F2398D81ACE33814DE6018A92F7947C1DB075A8780415CB53D"
+        },
+        {
+          "name": "PetDiagnostics.cs",
+          "sha256": "614E7E8047D6BCE83611DC42FF2BC0248466EDEE2414F95CD9EE6E494EA5169A"
+        },
+        {
+          "name": "PetDragFollower.cs",
+          "sha256": "CF32B309561C3C04DAAFB7E61A9C52C977FA9D29D46016A86FB42F5CEC53E9FA"
+        },
+        {
+          "name": "PetDragTests.cs",
+          "sha256": "D3B7E95CAA7ADE440BE6B4A7EB4699C81B07FE8B1D46A72E956F52532DA5A270"
+        },
+        {
+          "name": "PetPanelPlacement.cs",
+          "sha256": "C659CF5E661612756B51D0C4E9F1ED8567FC080CB2331AEC8FAB6DAAABFE798F"
+        },
+        {
+          "name": "PetPanelTests.cs",
+          "sha256": "CE45F9AEEA989D5BE223C041DD891451BD21EE9BA8F5071AE2F86C3851C92568"
+        },
+        {
+          "name": "PetStateService.cs",
+          "sha256": "EBC4F57CFA913BD854EAA0FC294E279D7199242EA219755E0136267EB8FC8C70"
+        },
+        {
+          "name": "PetSwitchTests.cs",
+          "sha256": "311993E8E2D2B0EAF8D56ABA30EFD6A2BB0F4749FE993E815E65B56333C68EAA"
+        },
+        {
+          "name": "PetTheme.cs",
+          "sha256": "F03EF4219CAAE05D39AD71C7D21D97BB9F21515A89B8978A2ED468AB19E43CDD"
+        },
+        {
+          "name": "PetTrackingTests.cs",
+          "sha256": "5DF8CCAE4CE001D76529B5A98A138A1C62C8B426CEF9F7057E50E43B87B5B20F"
+        },
+        {
+          "name": "Program.cs",
+          "sha256": "EF13C7FDC76CF3D86BC94147D7872D23E877509C76D33F321513510801F14C83"
+        },
+        {
+          "name": "QuotaData.cs",
+          "sha256": "9FA4DA10B6846F1CBFF9627A5A7AB2898A3FBF9AC859284717132897C2805E19"
+        },
+        {
+          "name": "QuotaFeature.cs",
+          "sha256": "4E2F7AA8D8633F68F621AC75F7C2466C4027A5B13C8AF4FC5A4EF44F1509107C"
+        },
+        {
+          "name": "QuotaLabel.cs",
+          "sha256": "8C628F23B2FAC685F0A4E97420BD992790875D3AF37B668FD9A2B1217DE4B540"
+        },
+        {
+          "name": "QuotaService.cs",
+          "sha256": "5C51DC2C61B39D857A94BE8AFE61B5AFA1F85658F929837D11A273EC75B54A08"
+        },
+        {
+          "name": "QuotaTests.cs",
+          "sha256": "E5BAE10D3B5A364BFDF88859D279208D6B9EDC6B19769050D26E58AD263187EB"
+        },
+        {
+          "name": "RuntimeData.cs",
+          "sha256": "0B9D1BDC8BBA4075DA7ECDFED5AC5FB3BE9E7C7A66AF5F98AEB12A566AE2ECCE"
+        },
+        {
+          "name": "RuntimeDataTests.cs",
+          "sha256": "E1AE72404A71750142532BED7088BF2DFFEF0331C3D363393D8B8269C279A404"
+        },
+        {
+          "name": "ShadowBackdrop.cs",
+          "sha256": "AC117E60B106D679CD294A82FA4E286B1027E8286E0DF1F957A39D52210F75EC"
+        },
+        {
+          "name": "StartupConfiguration.cs",
+          "sha256": "2B16509954264794F32F1F3D2B9DB618E8D0456F720DF199BFDA9236E501F4D8"
+        },
+        {
+          "name": "StartupTests.cs",
+          "sha256": "7DC1F33B956D5CD187C427FB157A53F550449457135CA9502E137EC8D2C153FB"
+        },
+        {
+          "name": "SystemMetrics.cs",
+          "sha256": "68D7F94F2AC63676F3528F9FFA17A7E036DC6935FB049FE39EB17A97B6A7B6A9"
+        },
+        {
+          "name": "SystemMetricsService.cs",
+          "sha256": "9F7732D02DC1B317C8F856CE4A63EF8EE7C014E68235C051CFA0B12859B02026"
+        },
+        {
+          "name": "SystemMetricsServiceTests.cs",
+          "sha256": "21862132375920D1CC38AB351CE99683C881EB9601D07BACAFD831CA9CD24C4B"
+        },
+        {
+          "name": "SystemMetricsTests.cs",
+          "sha256": "16C44C827C46BD4CD2D0912AD9C74B90BE343B1726DFB41E7932FF40D2F1297E"
+        },
+        {
+          "name": "ThemeTests.cs",
+          "sha256": "9CD0A42551281777A40A2BC0F5E9CDDA2E74EFE5B273C50E7A23E37D54ECD80B"
+        },
+        {
+          "name": "TrayMenuStyle.cs",
+          "sha256": "EDC687ED3B0BF857837CA7FA631FAFFBD84C63F5D75C14B6A5716B6D5CA546CC"
+        },
+        {
+          "name": "TrayOverlapTests.cs",
+          "sha256": "136A67FF75D1B653F107462AAD4DC104EC2EB95C2A2363DE70981D6A3821140D"
+        }
+      ],
+      "label": "reference",
+      "executableSha256": "26AB37734C795E362A016BF77FF80E8E5C3533C678B0BE971B580CC4B96E31DE"
+    },
+    {
+      "sources": [
+        {
+          "name": "BackdropGaussian.cs",
+          "sha256": "5CB53240FEE91C54E60C6D58D6B0712AFE3F0FA75434E80B40DC64BA74A3419C"
+        },
+        {
+          "name": "BubbleAppearance.cs",
+          "sha256": "8AB01402036AB5E95A5A6A6A9AE9F742DA5A90E3363CEE72B5794E7BCDC88022"
+        },
+        {
+          "name": "BubbleBackdrop.cs",
+          "sha256": "F063496CEE1ACB7AE063A224B5C8431CE0749C75D67AC80A3D8434F6235F5A08"
+        },
+        {
+          "name": "BubbleBackdropTests.cs",
+          "sha256": "9E33C004557C818877DB2EEF9A30F30A9289646E3A6ACA983AB742C7491F8464"
+        },
+        {
+          "name": "BubbleCaptureTests.cs",
+          "sha256": "98295F908A21369594244CB35AF4640F9A32AEF8765CB5ACC4CE79FCCBB9C20B"
+        },
+        {
+          "name": "BubbleClickTests.cs",
+          "sha256": "D02B3588AC614A7D6AF1230434DCD5DBEDE55125FAC93A2A82271C91872DD671"
+        },
+        {
+          "name": "BubbleContentState.cs",
+          "sha256": "64B0A4B5C38C37EF4AA0B8A312875BEBE33A8DB29F35C7980923CBFDC6282BF5"
+        },
+        {
+          "name": "BubbleLayout.cs",
+          "sha256": "254C79DAF97696DD29E99506769466B1E0ED62CCF632BDFB238F8B3291A1FE5C"
+        },
+        {
+          "name": "BubbleMaterialTests.cs",
+          "sha256": "1640DFD7ABE00C8CFA6633243ED136913A15E1508BF792F6B601E7EB0269A9D9"
+        },
+        {
+          "name": "BubbleSettingsStore.cs",
+          "sha256": "6E979A778ED6405372A2EC3DF85B7A3B35904061C56B2E3BC08F1A324F6BC109"
+        },
+        {
+          "name": "BubbleSettingsTests.cs",
+          "sha256": "2137016B9AD6E6A35F93C709DDC4E76F02C99ADC2B524098447F084468BA13F2"
+        },
+        {
+          "name": "BubbleThemeTests.cs",
+          "sha256": "51A8FBE583053F76F276556D72433816EEFA93159DD90DFDD1CAD8017803750A"
+        },
+        {
+          "name": "BubbleZOrderTests.cs",
+          "sha256": "D73F4E884DB81DB5AC9401F80243359BBFEA396DE6A54E8F2DBD822EC21472A8"
+        },
+        {
+          "name": "CloseBubbleButton.cs",
+          "sha256": "8F35A108B7D594F82D43AE99D61CD76A594F75B8A714D236DBDEEB11161A2F57"
+        },
+        {
+          "name": "CodexAutoStart.cs",
+          "sha256": "0E32DBE1B18E635DFE4CDC76FAEE1912EC427522347DA64B808ABAB449E61DB3"
+        },
+        {
+          "name": "CodexAutoStartTests.cs",
+          "sha256": "A76CD5C736850D686A2599F592A26BA5F89047285955BD5A6A46A74BEC98E4AC"
+        },
+        {
+          "name": "CodexMenuTheme.cs",
+          "sha256": "9505407681F2C365095C1644474218F6C83F61DC4C4785F1E01031A5385CFBB3"
+        },
+        {
+          "name": "CodexMenuThemeTests.cs",
+          "sha256": "7DCA9D3461E33E8DE56D506BA02286B8900ED2EE3195FBCA2BD99D4835F0ECC9"
+        },
+        {
+          "name": "CodexQuotaSource.cs",
+          "sha256": "AB12C140B7BA9BE8EE04154A874A165970D5227351FE7CC335080B1AF840D751"
+        },
+        {
+          "name": "CompanionApplication.cs",
+          "sha256": "2BA3558475B1004DCD28DAD3EAB9A267DBF33AF4D708C7F4334A07CA8CB40558"
+        },
+        {
+          "name": "CompanionSignals.cs",
+          "sha256": "D88E6ECFB1D7E69D56DC2F3728162043E08D6A201BF070506AB3BC06290C10D3"
+        },
+        {
+          "name": "CompanionSignalsTests.cs",
+          "sha256": "201FA48237833AFE65586D3A097FE41AC1CBF200C06EB525169AB4770B7C611C"
+        },
+        {
+          "name": "DiagnosticLog.cs",
+          "sha256": "6DDCCAF996EB4CD25BBAFA0248C6E86517342F0BA52FA23EE45E23856B129DB2"
+        },
+        {
+          "name": "DiagnosticLogTests.cs",
+          "sha256": "28D0F0A41A7FFCF599E96642A7BB7D97ACD0865095F84EB95931DD4BBB47E4CA"
+        },
+        {
+          "name": "FakeQuotaServer.cs",
+          "sha256": "486C877203962062BA34EA4782953243E9EB74A043D64EADE4E2B7C798D2D37D"
+        },
+        {
+          "name": "FeatureLifecycleTests.cs",
+          "sha256": "DAABC9911B42177983045ED2BFA43FB13A9222C230962743092FE1A5800CA9E6"
+        },
+        {
+          "name": "GlassBackdrop.cs",
+          "sha256": "E77D1FA25CD8FC725CE449D02C61726BB2E570F578437DA01B0B3B4FFAE3167E"
+        },
+        {
+          "name": "GlassVerification.cs",
+          "sha256": "74A3FBE8F4427EB01C134C72F7984D8153C139A5B38A74F1695D83F4BF016BED"
+        },
+        {
+          "name": "ICompanionFeature.cs",
+          "sha256": "CEBA7D42367D5656A93927A47A3AD37EBBA2676C5A47003CCCE7615993D946DF"
+        },
+        {
+          "name": "Inspect.cs",
+          "sha256": "D5E62DFDD453E614E7AB57478116A23782744168BA2AB880FCBE7E28FF52B3F6"
+        },
+        {
+          "name": "Native.cs",
+          "sha256": "C99AACAC8F79B413C1E51CE394CE2DB0841B153FF81CE229B5B33616871E7741"
+        },
+        {
+          "name": "PairedPerformanceProbe.cs",
+          "sha256": "46EA6EB2E93E823544EDE18A0C26F0481EC68A51C2311DB0CDF2BD33236E2F00"
+        },
+        {
+          "name": "PerformanceProbe.cs",
+          "sha256": "815EE2D60E2303255D71CE53F5A33841A7B5A2B4074DB09ED62CCE01232A892A"
+        },
+        {
+          "name": "PetColourSwitch.cs",
+          "sha256": "6090F5405C0F79F2398D81ACE33814DE6018A92F7947C1DB075A8780415CB53D"
+        },
+        {
+          "name": "PetDiagnostics.cs",
+          "sha256": "614E7E8047D6BCE83611DC42FF2BC0248466EDEE2414F95CD9EE6E494EA5169A"
+        },
+        {
+          "name": "PetDragFollower.cs",
+          "sha256": "CF32B309561C3C04DAAFB7E61A9C52C977FA9D29D46016A86FB42F5CEC53E9FA"
+        },
+        {
+          "name": "PetDragTests.cs",
+          "sha256": "D3B7E95CAA7ADE440BE6B4A7EB4699C81B07FE8B1D46A72E956F52532DA5A270"
+        },
+        {
+          "name": "PetPanelPlacement.cs",
+          "sha256": "C659CF5E661612756B51D0C4E9F1ED8567FC080CB2331AEC8FAB6DAAABFE798F"
+        },
+        {
+          "name": "PetPanelTests.cs",
+          "sha256": "CE45F9AEEA989D5BE223C041DD891451BD21EE9BA8F5071AE2F86C3851C92568"
+        },
+        {
+          "name": "PetStateService.cs",
+          "sha256": "B2EA8A4D5905D99E1E56823DE587A57BD12C6B5C1F802A715318FB0BC785E5E0"
+        },
+        {
+          "name": "PetSwitchTests.cs",
+          "sha256": "311993E8E2D2B0EAF8D56ABA30EFD6A2BB0F4749FE993E815E65B56333C68EAA"
+        },
+        {
+          "name": "PetTheme.cs",
+          "sha256": "F03EF4219CAAE05D39AD71C7D21D97BB9F21515A89B8978A2ED468AB19E43CDD"
+        },
+        {
+          "name": "PetTrackingTests.cs",
+          "sha256": "5DF8CCAE4CE001D76529B5A98A138A1C62C8B426CEF9F7057E50E43B87B5B20F"
+        },
+        {
+          "name": "Program.cs",
+          "sha256": "EF13C7FDC76CF3D86BC94147D7872D23E877509C76D33F321513510801F14C83"
+        },
+        {
+          "name": "QuotaData.cs",
+          "sha256": "9FA4DA10B6846F1CBFF9627A5A7AB2898A3FBF9AC859284717132897C2805E19"
+        },
+        {
+          "name": "QuotaFeature.cs",
+          "sha256": "4E2F7AA8D8633F68F621AC75F7C2466C4027A5B13C8AF4FC5A4EF44F1509107C"
+        },
+        {
+          "name": "QuotaLabel.cs",
+          "sha256": "8DFF59857B9600E1CDAE95606D7D53F25BF45D545BA1FE6BF5F1E47752A325B8"
+        },
+        {
+          "name": "QuotaService.cs",
+          "sha256": "5C51DC2C61B39D857A94BE8AFE61B5AFA1F85658F929837D11A273EC75B54A08"
+        },
+        {
+          "name": "QuotaTests.cs",
+          "sha256": "E5BAE10D3B5A364BFDF88859D279208D6B9EDC6B19769050D26E58AD263187EB"
+        },
+        {
+          "name": "RuntimeData.cs",
+          "sha256": "0B9D1BDC8BBA4075DA7ECDFED5AC5FB3BE9E7C7A66AF5F98AEB12A566AE2ECCE"
+        },
+        {
+          "name": "RuntimeDataTests.cs",
+          "sha256": "E1AE72404A71750142532BED7088BF2DFFEF0331C3D363393D8B8269C279A404"
+        },
+        {
+          "name": "ShadowBackdrop.cs",
+          "sha256": "AC117E60B106D679CD294A82FA4E286B1027E8286E0DF1F957A39D52210F75EC"
+        },
+        {
+          "name": "StartupConfiguration.cs",
+          "sha256": "2B16509954264794F32F1F3D2B9DB618E8D0456F720DF199BFDA9236E501F4D8"
+        },
+        {
+          "name": "StartupTests.cs",
+          "sha256": "7DC1F33B956D5CD187C427FB157A53F550449457135CA9502E137EC8D2C153FB"
+        },
+        {
+          "name": "SystemMetrics.cs",
+          "sha256": "68D7F94F2AC63676F3528F9FFA17A7E036DC6935FB049FE39EB17A97B6A7B6A9"
+        },
+        {
+          "name": "SystemMetricsService.cs",
+          "sha256": "9F7732D02DC1B317C8F856CE4A63EF8EE7C014E68235C051CFA0B12859B02026"
+        },
+        {
+          "name": "SystemMetricsServiceTests.cs",
+          "sha256": "21862132375920D1CC38AB351CE99683C881EB9601D07BACAFD831CA9CD24C4B"
+        },
+        {
+          "name": "SystemMetricsTests.cs",
+          "sha256": "16C44C827C46BD4CD2D0912AD9C74B90BE343B1726DFB41E7932FF40D2F1297E"
+        },
+        {
+          "name": "ThemeTests.cs",
+          "sha256": "9CD0A42551281777A40A2BC0F5E9CDDA2E74EFE5B273C50E7A23E37D54ECD80B"
+        },
+        {
+          "name": "TrayMenuStyle.cs",
+          "sha256": "EDC687ED3B0BF857837CA7FA631FAFFBD84C63F5D75C14B6A5716B6D5CA546CC"
+        },
+        {
+          "name": "TrayOverlapTests.cs",
+          "sha256": "136A67FF75D1B653F107462AAD4DC104EC2EB95C2A2363DE70981D6A3821140D"
+        }
+      ],
+      "label": "optimized",
+      "executableSha256": "E22CF1899B36B48BF5DFBBDDEDAF9876F52F3CAE4B3709AE1ACC8CC55B627AD9"
+    }
+  ],
+  "warmup": 10,
+  "seconds": 30,
+  "reference": "Same snapshot with config cache, changed-state suppression and idle timer changes disabled.",
+  "nativeDrag": true,
+  "rounds": 5
+}
