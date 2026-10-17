@@ -1,16 +1,16 @@
 # PetFolio Codex plugin — Windows x64
 
-This plugin starts, stops, and diagnoses the PetFolio desktop companion. Quota Bubble follows an existing Codex Pet and displays quota for the **Codex CLI login account**, which may differ from the desktop account.
+This plugin starts, stops, and diagnoses the PetFolio desktop companion. Its two features share a bubble that follows an existing Codex Pet: **Quota remaining** displays quota for the **Codex CLI login account**, which may differ from the desktop account; **System Usage** displays whole-system CPU and memory usage plus download/upload rates.
 
 Requirements: Windows x64, .NET Framework 4.8, Codex desktop with a Pet enabled, and a logged-in Codex CLI. No Python, compiler, or MCP server is needed to use this package.
 
 After installing, start a new chat and ask:
 
-- “Open PetFolio Quota Bubble.”
+- “Open PetFolio.”
 - “Check PetFolio status.”
 - “Stop PetFolio.”
 
-Setup checks local paths and dependencies. It does not log in, query quota, or automatically launch the companion. A successful start confirms the companion initialized; show your Pet in Codex to see the bubble. Click the bubble to refresh quota, or use the system tray to adjust appearance and restore a hidden bubble.
+Setup checks local paths and dependencies. It does not log in, query quota, or automatically launch the companion. A successful start confirms the companion initialized; show your Pet in Codex to see the bubble. Click the bubble to refresh the current mode, double-click to switch between Quota remaining and System Usage when both are enabled, or use the system tray to adjust appearance and restore a hidden bubble.
 
 You can also invoke the bundled scripts directly from this directory:
 

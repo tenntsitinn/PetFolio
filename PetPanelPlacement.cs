@@ -11,28 +11,20 @@ sealed class PetPanelPlacement
 
     Point pressPointer;
     Point dragOrigin;
-    static readonly string[] Corners =
+    internal PetPanelPlacement(string preference = "right")
     {
-        "top-start",
-        "top-end",
-        "bottom-start",
-        "bottom-end"
-    };
-    internal PetPanelPlacement(string preference = "top-end")
-    {
-        Preferred = Valid(preference) ? preference : "top-end";
+        Preferred = Normalize(preference);
     }
 
-    internal static bool Valid(string value)
+    internal static string Normalize(string value)
     {
-        return Array.IndexOf(Corners, value) >= 0;
+        // Existing settings used four corners. Preserve their horizontal side.
+        return value == "left" || value == "top-start" || value == "bottom-start" ? "left" : "right";
     }
 
-    // Same center comparisons and equality behavior as the client's badge corner handler.
-    internal static string CornerAt(Point pointer, Rectangle pet)
+    internal static string SideAt(Point pointer, Rectangle pet)
     {
-        return (pointer.Y < pet.Top + pet.Height / 2.0 ? "top" : "bottom") + "-" +
-            (pointer.X < pet.Left + pet.Width / 2.0 ? "start" : "end");
+        return pointer.X < pet.Left + pet.Width / 2.0 ? "left" : "right";
     }
 
     internal void Begin(Point pointer, Point renderedPanel)
@@ -62,7 +54,7 @@ sealed class PetPanelPlacement
             return false;
         bool commit = HasMoved;
         if (commit)
-            Preferred = CornerAt(pointer, pet);
+            Effective = Preferred = SideAt(pointer, pet);
         Active = false;
         HasMoved = false;
         return commit;
@@ -74,53 +66,35 @@ sealed class PetPanelPlacement
         HasMoved = false;
     }
 
-    internal Point Resolve(Rectangle pet, Size panel, Rectangle workArea, int padding)
+    internal Point Resolve(Rectangle pet, Size panel, Rectangle workArea, int padding, bool petDragging = false)
     {
-        string chosenCorner = Preferred;
-        if (Overflow(Dock(Preferred, pet, panel), panel, workArea, padding) > 0)
-        {
-            double lowestScore = double.MaxValue;
-            foreach (string candidate in Corners)
-            {
-                var candidatePosition = Dock(candidate, pet, panel);
-                // Compare overflow first; retain the effective corner in tight space.
-                double score = Overflow(candidatePosition, panel, workArea, padding);
-                if (candidate != Preferred)
-                    score += 32;
-                if (candidate == Effective)
-                    score -= 8;
-                if (score < lowestScore)
-                {
-                    lowestScore = score;
-                    chosenCorner = candidate;
-                }
-            }
-        }
-
-        Effective = chosenCorner;
-        return Constrain(Dock(chosenCorner, pet, panel), panel, workArea, padding);
+        // Codex 26.1013.3656: Kp / fle / gle, transposed from top/bottom to left/right.
+        // Drag entry points reset the previous direction before scoring; idle layout retains it.
+        string preferred = pet.Left + pet.Width / 2.0 < workArea.Left + workArea.Width / 2.0 ? "right" : "left";
+        string previous = petDragging ? preferred : Effective ?? Preferred;
+        var left = Dock("left", pet, panel);
+        var right = Dock("right", pet, panel);
+        double leftScore = Overflow(left, panel, workArea) + (preferred == "left" ? 0 : 32) - (previous == "left" ? 96 : 0);
+        double rightScore = Overflow(right, panel, workArea) + (preferred == "right" ? 0 : 32) - (previous == "right" ? 96 : 0);
+        Effective = leftScore <= rightScore ? "left" : "right";
+        // Like the native layout, apply edge padding only after choosing a direction.
+        return Constrain(Effective == "left" ? left : right, panel, workArea, padding);
     }
 
-    static Point Dock(string corner, Rectangle pet, Size panel)
+    static Point Dock(string side, Rectangle pet, Size panel)
     {
-        // Native notification trays occupy the area above or below the mascot.
-        // Keep the quota body alongside the mascot, inside its vertical band,
-        // instead of adding another panel to the client's notification/control rows.
-        int top = pet.Top;
-        int bottom = pet.Bottom - panel.Height;
-        if (panel.Height > pet.Height)
-            top = bottom = pet.Top + (pet.Height - panel.Height) / 2;
-        return new Point(corner.EndsWith("start") ? pet.Left - panel.Width - 12 : pet.Right + 12,
-            corner.StartsWith("top") ? top : bottom);
+        // Center on the pet canvas, independent of the sprite's animated outline.
+        return new Point(side == "left" ? pet.Left - panel.Width - 12 : pet.Right + 12,
+            pet.Top + (pet.Height - panel.Height) / 2);
     }
 
-    static double Overflow(Point position, Size panel, Rectangle area, int padding)
+    static double Overflow(Point position, Size panel, Rectangle area)
     {
-        int left = Math.Max(0, area.Left + padding - position.X);
-        int right = Math.Max(0, position.X + panel.Width + padding - area.Right);
-        int top = Math.Max(0, area.Top + padding - position.Y);
-        int bottom = Math.Max(0, position.Y + panel.Height + padding - area.Bottom);
-        return left + right + top + bottom + (left + right) * (double)panel.Height + (top + bottom) * (double)panel.Width;
+        double left = Math.Max(0, area.Left - position.X);
+        double top = Math.Max(0, area.Top - position.Y);
+        double right = Math.Max(0, position.X + panel.Width - area.Right);
+        double bottom = Math.Max(0, position.Y + panel.Height - area.Bottom);
+        return left + top + right + bottom + (left + right) * panel.Height + (top + bottom) * panel.Width;
     }
 
     internal static Point Constrain(Point position, Size panel, Rectangle area, int padding)

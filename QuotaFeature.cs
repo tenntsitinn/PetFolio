@@ -14,6 +14,7 @@ sealed class QuotaFeature : ICompanionFeature
     readonly Action<string, object> record;
     readonly BubbleSettingsStore settingsStore;
     readonly Func<ISystemMetricsSource> createSystemSource;
+    readonly Action refreshDisplayMetrics;
     BubbleSettings settings;
     BubbleContentState content;
     QuotaLabel view;
@@ -71,7 +72,8 @@ sealed class QuotaFeature : ICompanionFeature
 
     public QuotaFeature(string home, IPetStateSource pets, Func<IQuotaSource> createSource,
         Action<Action> dispatch, Action<QuotaSnapshot> persist, Action<string, object> record,
-        BubbleSettingsStore settingsStore = null, Func<ISystemMetricsSource> createSystemSource = null)
+        BubbleSettingsStore settingsStore = null, Func<ISystemMetricsSource> createSystemSource = null,
+        Action refreshDisplayMetrics = null)
     {
         this.home = home;
         this.pets = pets;
@@ -81,6 +83,7 @@ sealed class QuotaFeature : ICompanionFeature
         this.record = record;
         this.settingsStore = settingsStore ?? new BubbleSettingsStore(Path.Combine(Program.DataFolder, "appearance.json"), record);
         this.createSystemSource = createSystemSource ?? (() => new SystemMetricsSource());
+        this.refreshDisplayMetrics = refreshDisplayMetrics;
         Commands = new ToolStripItem[0];
         quotaOption.Click += (s, e) => ToggleMode(false);
         systemOption.Click += (s, e) => ToggleMode(true);
@@ -104,6 +107,7 @@ sealed class QuotaFeature : ICompanionFeature
             view.ModeRequested += SelectMode;
             view.SettingsChanged += SaveSettings;
             view.SamplingVisibilityChanged += UpdateSystemSampling;
+            view.DisplayMetricsChanged += refreshDisplayMetrics;
             pets.Changed += OnPet;
             refresh = new ToolStripMenuItem("Refresh", null, (s, e) => view.RefreshCurrent());
             var commands = new List<ToolStripItem>(view.Commands);
@@ -280,6 +284,7 @@ sealed class QuotaFeature : ICompanionFeature
             view.ModeRequested -= SelectMode;
             view.SettingsChanged -= SaveSettings;
             view.SamplingVisibilityChanged -= UpdateSystemSampling;
+            view.DisplayMetricsChanged -= refreshDisplayMetrics;
             view.Close();
             view.Dispose();
             view = null;

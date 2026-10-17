@@ -7,7 +7,8 @@ using System.Web.Script.Serialization;
 sealed class BubbleSettings
 {
     internal int OpacityPercent = 90;
-    internal string PanelCorner = "top-end";
+    // Keep the JSON field name for existing settings; values now identify a side.
+    internal string PanelCorner = "right";
     internal bool SystemMode, QuotaEnabled = true, SystemEnabled = true;
     internal bool DefaultAppearance = true, DefaultFrostedGlass, PetFrostedGlass = true;
 }
@@ -35,8 +36,8 @@ sealed class BubbleSettingsStore
             object value;
             if (values.TryGetValue("opacityPercent", out value) && value is int)
                 settings.OpacityPercent = Math.Max(10, Math.Min(100, (int)value));
-            if (values.TryGetValue("panelCorner", out value) && PetPanelPlacement.Valid(value as string))
-                settings.PanelCorner = (string)value;
+            if (values.TryGetValue("panelCorner", out value))
+                settings.PanelCorner = PetPanelPlacement.Normalize(value as string);
             if (values.TryGetValue("bubbleMode", out value))
                 settings.SystemMode = (value as string) == "system";
             if (values.TryGetValue("appearanceMode", out value))
@@ -80,7 +81,7 @@ sealed class BubbleSettingsStore
         {
             Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(path)));
             File.WriteAllText(temporary, new JavaScriptSerializer().Serialize(new {
-                opacityPercent = settings.OpacityPercent, panelCorner = settings.PanelCorner, bubbleMode = settings.SystemMode ? "system" : "quota",
+                opacityPercent = settings.OpacityPercent, panelCorner = PetPanelPlacement.Normalize(settings.PanelCorner), bubbleMode = settings.SystemMode ? "system" : "quota",
                 quotaEnabled = settings.QuotaEnabled, systemEnabled = settings.SystemEnabled, appearanceMode = settings.DefaultAppearance ? "default" : "pet",
                 defaultFrostedGlass = settings.DefaultFrostedGlass, petFrostedGlass = settings.PetFrostedGlass }));
             if (File.Exists(path))

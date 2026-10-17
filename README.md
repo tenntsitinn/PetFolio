@@ -4,11 +4,11 @@
 
 **圍繞 Codex Pet，增加實用功能與互動的 Windows 桌面伴侶工具。**
 
-PetFolio 讓桌面寵物成為工作時有用的小夥伴。**Quota Bubble / System Bubble** 在你已有的 Codex Pet 旁顯示剩餘額度或電腦狀態，跟隨寵物移動，並提供單擊刷新、雙擊切換與外觀調整。
+PetFolio 讓桌面寵物成為工作時有用的小夥伴。**Quota remaining** 顯示剩餘額度，**System Usage** 顯示 CPU、記憶體使用率與網速。兩項功能共用你已有的 Codex Pet 旁的氣泡，跟隨寵物移動，並提供單擊刷新、雙擊切換與外觀調整。
 
 可擴充性是專案的基本要求：應用宿主、共用寵物狀態與個別功能已分開，後續功能可以沿用同一套追蹤與生命週期管理。
 
-> 提供獨立 Windows 程式及可安裝的本機 Codex 插件封裝。應用程式名稱為 PetFolio，Quota Bubble 是其中的額度功能；插件入口提供啟動、停止與診斷。尚未公開上架。
+> 提供獨立 Windows 程式及可安裝的本機 Codex 插件封裝。應用程式名稱為 PetFolio，包含 Quota remaining 與 System Usage 兩項功能；插件入口提供啟動、停止與診斷。尚未公開上架。
 
 [下載最新版本](https://github.com/tenntsitinn/PetFolio/releases/latest) · [快速開始](#快速開始) · [使用方式](#使用方式) · [開發與擴充](#開發與擴充) · [已知限制](#已知限制)
 
@@ -33,16 +33,16 @@ PetFolio 讓桌面寵物成為工作時有用的小夥伴。**Quota Bubble / Sys
 
 </details>
 
-## 目前功能：Quota Bubble
+## 目前功能：Quota remaining 與 System Usage
 
 兩種模式共用 **208 × 104 px** 氣泡，標題為 **Quota remaining / System usage**。雙列指標使用 16px 粗體，標題 13px、輔助資訊 11px（Segoe UI）。進度條分別表示剩餘額度或 CPU／RAM 使用率；Default 使用中性灰進度條，Pet colour 使用寵物主題色並修正對比度；填充與軌道約 85%／15% alpha。System 底部並列顯示完整網速，例如 `↓ 1.2 MB/s  ↑ 256 KB/s`，不顯示更新時間；Quota 底部保留 `updated`。
 
-- **System Bubble**：雙擊同一個氣泡，在額度與系統監控之間切換；也可使用系統匣的 **Switch to System usage / Switch to Quota remaining**。模式會保存，下次啟動自動恢復。系統模式每兩秒顯示整機 CPU 使用率、實體記憶體使用率，以及網路下載（↓）與上傳（↑）速率；單擊可刷新當前模式，拖動與關閉操作保持一致。
+- **System Usage**：雙擊同一個氣泡，在額度與系統監控之間切換；也可使用系統匣的 **Switch to System usage / Switch to Quota remaining**。模式會保存，下次啟動自動恢復。系統模式每兩秒顯示整機 CPU 使用率、實體記憶體使用率，以及網路下載（↓）與上傳（↑）速率；單擊可刷新當前模式，拖動與關閉操作保持一致。
 - 系統模式沿用原有視窗、大小、配色與定位，不新增氣泡。隱藏或回到額度模式時停止系統採樣；額度仍依原有週期在背景更新。CPU 與網速首次採樣顯示 `--`，下一次採樣才有速率。網速合計啟用中的非 loopback、非 tunnel 介面；VPN 或虛擬網卡可能造成重複計算，數值不是 Codex 專屬流量。單擊會等待系統雙擊判定時間，避免切換模式時觸發額度查詢。
 
-- **查看剩餘額度**：透過 Codex CLI 的 `account/rateLimits/read` 查詢，以回傳的計算週期顯示剩餘百分比；充值積分不混入訂閱額度。
+- **Quota remaining**：透過 Codex CLI 的 `account/rateLimits/read` 查詢，以回傳的計算週期顯示剩餘百分比；充值積分不混入訂閱額度。
 - **自動與手動刷新**：啟用時立即查詢，之後每五分鐘刷新；單擊氣泡可立即更新。查詢中保留已有數值，失敗時保留最近一次結果並標示更新失敗。
-- **跟隨與定位**：拖動寵物時氣泡持續跟隨；拖動氣泡可選擇寵物左上、右上、左下或右下方位。靠近螢幕邊緣時自動調整，空間恢復後回到偏好方位。
+- **跟隨與定位**：拖動寵物時氣泡持續跟隨，以寵物畫布中心與目前螢幕工作區中心比較：寵物在左半區時氣泡放右側，到達右半區時改放左側，垂直居中於寵物畫布。靜止重新佈局時優先保留已有側，空間不足時依溢出代價避讓，最後限制在工作區內。拖動氣泡仍可手動選側；再次拖動寵物會重新按中線選側。舊的上下方位設定會沿用原本的左右側作為初始方向。
 - **配色與玻璃背景**：Default 使用原生氣泡配色；Pet colour 配色優先使用寵物源圖快取，無有效快取時嘗試從寵物視窗取色。兩種外觀支援圓角並共用原生 Status Bubble 陰影，陰影深淺隨 Codex 主題同步；Pet colour 提供 10%～100% 背景不透明度；玻璃初始化失敗時回退為半透明背景。
 - **減少操作干擾**：氣泡不搶走編輯器焦點，透明圓角及背景、陰影區域可讓滑鼠穿透；寵物隱藏或關閉時，氣泡也會隱藏。
 - **獨立功能開關**：可暫時隱藏氣泡，或分別停用額度與系統模式；功能開關、透明度與相對方位會保存在本機。
@@ -315,11 +315,11 @@ python .\build-pet-palettes.py --asar 'C:\path\to\resources\app.asar' --home 'C:
 
 **A Windows desktop companion that adds useful features and interactions around Codex Pet.**
 
-PetFolio makes your desktop pet a useful companion while you work. **Quota Bubble / System Bubble** shows remaining Codex quota or system usage beside your existing pet, follows its movement, and offers click-to-refresh, double-click switching, and appearance controls.
+PetFolio makes your desktop pet a useful companion while you work. **Quota remaining** displays remaining Codex quota, and **System Usage** displays CPU and memory usage plus network rates. Both features share a bubble beside your existing pet, follow its movement, and offer click-to-refresh, double-click switching, and appearance controls.
 
 Extensibility is a core requirement. The application host, shared pet state, and individual features have separate responsibilities so future features can reuse pet tracking and lifecycle management.
 
-PetFolio includes a standalone Windows application and an installable local Codex plugin that starts, stops, and diagnoses the companion. It has not been published to the public plugin directory. PetFolio is the project name; Quota Bubble is its quota feature.
+PetFolio includes a standalone Windows application and an installable local Codex plugin that starts, stops, and diagnoses the companion. It has not been published to the public plugin directory. PetFolio is the project name; Quota remaining and System Usage are its two features.
 
 > **Frosted glass is currently in testing.** Toggle background blur in `Appearance → Frosted glass`. Default starts with blur off and Pet colour with blur on; each appearance remembers its own choice. Please report rendering or performance issues.
 
@@ -344,16 +344,16 @@ UI illustrations use built-in Codex pets and sample values.
 
 </details>
 
-### Current feature: Quota Bubble
+### Current features: Quota remaining and System Usage
 
 Both modes share a **208 × 104 px** bubble titled **Quota remaining / System usage**. Typography uses Segoe UI: 13px titles, 16px bold metrics and 11px supporting text. Progress bars show quota remaining or CPU/RAM usage; Default uses neutral progress bars; Pet colour uses contrast-corrected pet colours. Both use approximately 85% fill / 15% track alpha. System displays download/upload rates with full units in the footer, for example `↓ 1.2 MB/s  ↑ 256 KB/s`, without a timestamp. Quota retains its `updated` footer.
 
-- **System Bubble**: Double-click the existing bubble to switch between quota and system metrics, or use **Switch to System usage / Switch to Quota remaining** in the tray menu. The mode is saved. System mode updates whole-system CPU usage, physical memory usage, and download (↓) / upload (↑) rates every two seconds. Single-click refreshes the current mode; dragging and closing work as before.
+- **System Usage**: Double-click the existing bubble to switch between quota and system metrics, or use **Switch to System usage / Switch to Quota remaining** in the tray menu. The mode is saved. System mode updates whole-system CPU usage, physical memory usage, and download (↓) / upload (↑) rates every two seconds. Single-click refreshes the current mode; dragging and closing work as before.
 - Both modes share the same window, size, colour and placement. System sampling stops when hidden or switched to quota; quota polling continues on its original schedule. CPU and network rates initially show `--` until a second sample arrives. Traffic totals include active non-loopback, non-tunnel interfaces; VPN and virtual adapters may count traffic twice. These are system totals, not Codex-only traffic. Single-click waits for the OS double-click interval to avoid querying quota when switching modes.
 
-- **Remaining quota:** Uses the Codex CLI `account/rateLimits/read` response to display remaining percentages for the returned usage windows. Purchased credits are kept separate from subscription quota.
+- **Quota remaining:** Uses the Codex CLI `account/rateLimits/read` response to display remaining percentages for the returned usage windows. Purchased credits are kept separate from subscription quota.
 - **Automatic and manual refresh:** Queries immediately when enabled and every five minutes afterward. Click the bubble to refresh. Existing values remain visible during updates and after failures, with a failure indicator when appropriate.
-- **Following and placement:** Follows pet dragging. Drag the bubble to prefer the pet's upper left, upper right, lower left, or lower right. Placement adjusts near screen edges and returns to your preferred side when space becomes available.
+- **Following and placement:** While dragging the pet, compares its canvas center with the current monitor's work-area center: the bubble goes right when the pet is in the left half, and left upon reaching the right half. It stays vertically centered on the pet canvas. Idle layout favors the existing side, uses overflow scoring when space is limited, and constrains the result to the work area. Dragging the bubble still selects a side manually; the next pet drag selects again by the midpoint. Older corner preferences retain their left or right side as the initial direction.
 - **Colors and glass background:** Default uses native bubble colours. Pet colour prefers a valid palette cache derived from pet source images; otherwise attempts to sample the pet window. Both appearances support rounded corners and share the native Status Bubble shadow, with strength following the Codex theme; Pet colour provides background opacity from 10% to 100%. Falls back to a translucent background if glass initialization fails.
 - **Less interference:** Does not take focus from your editor. Transparent corners, background, and shadow regions allow mouse input to pass through. The bubble hides when the pet is hidden or closed.
 - **Independent feature controls:** Temporarily hide the bubble or enable quota and system modes independently. Feature switches, background opacity and preferred placement are saved locally.

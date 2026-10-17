@@ -386,6 +386,20 @@ static class BubbleClickTests
             frosted.PerformClick();
             petItem.PerformClick();
             view.SetMode(false);
+            var area = Screen.PrimaryScreen.WorkingArea;
+            int centerX = (int)Math.Ceiling(area.Left + area.Width / 2.0 - 56);
+            int centerY = area.Top + area.Height / 2 - 61;
+            Action<int, bool> movePet = (x, dragging) => view.UpdatePet(new PetState(new IntPtr(1),
+                new Point(x, centerY), 112, true, true, dragging, "new-pet", Color.CornflowerBlue));
+            movePet(centerX - 1, true);
+            Check(view.Left == centerX - 1 + 112 + 12, "Pet drag left of work-area center places the real bubble on the right");
+            movePet(centerX, true);
+            Check(view.Right == centerX - 12, "Pet drag across center immediately places the real bubble on the left");
+            movePet(centerX - 1, false);
+            Check(view.Right == centerX - 1 - 12, "Idle snapshot retains the real bubble side across center");
+            movePet(centerX - 1, true);
+            Check(view.Left == centerX - 1 + 112 + 12, "Reverse pet drag resets the real bubble direction");
+            Check(view.Top == centerY + (122 - view.Height) / 2, "Side switching preserves canvas vertical centering");
         }
 
         Console.WriteLine(checks + " bubble click checks passed");

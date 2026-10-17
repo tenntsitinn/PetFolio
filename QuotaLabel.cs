@@ -145,6 +145,7 @@ class QuotaLabel : Form
     internal event Action<bool> ModeRequested;
     internal event Action SettingsChanged;
     internal event Action SamplingVisibilityChanged;
+    internal event Action DisplayMetricsChanged;
     string line1 = "Reading quota...", line2 = "", status = "";
     string value1 = "", value2 = "";
     Point lastLabel = new Point(int.MinValue, int.MinValue), lastAnchor;
@@ -270,6 +271,7 @@ class QuotaLabel : Form
             ModeRequested = null;
             SettingsChanged = null;
             SamplingVisibilityChanged = null;
+            DisplayMetricsChanged = null;
         }
 
         base.Dispose(disposing);
@@ -684,7 +686,12 @@ class QuotaLabel : Form
         if (m.Msg == 0x1A || m.Msg == 0x31A)
             RefreshCodexAppearance(); // Settings / theme changed.
         if (m.Msg == 0x7E || m.Msg == 0x2E0)
+        {
+            var handler = DisplayMetricsChanged;
+            if (handler != null)
+                handler();
             Follow(); // Display layout / DPI changed.
+        }
     }
 
     Rectangle PetBounds
@@ -992,9 +999,11 @@ class QuotaLabel : Form
 
         if (!Visible)
             Show();
-        var monitor = Screen.FromPoint(anchor).WorkingArea;
+        var petBounds = PetBounds;
+        var monitor = Screen.FromPoint(new Point(petBounds.Left + petBounds.Width / 2,
+            petBounds.Top + petBounds.Height / 2)).WorkingArea;
         int edgePadding = glass != null ? 24 : 0;
-        var desired = placement.Resolve(PetBounds, Size, monitor, edgePadding);
+        var desired = placement.Resolve(petBounds, Size, monitor, edgePadding, petState.Dragging);
         if (placement.Active)
         {
             Native.POINT pointer;
@@ -1008,7 +1017,7 @@ class QuotaLabel : Form
             if (placement.Active)
                 desired = placement.DragPosition;
             else
-                desired = placement.Resolve(PetBounds, Size, monitor, edgePadding);
+                desired = placement.Resolve(petBounds, Size, monitor, edgePadding, petState.Dragging);
         }
 
         if (!placement.Active && snap.Active)

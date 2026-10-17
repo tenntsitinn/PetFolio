@@ -69,6 +69,7 @@ sealed class PetStateService : IPetStateSource, IDisposable
     readonly PetColourSwitch petSwitch = new PetColourSwitch();
     readonly PetPaletteCatalog palettes;
     readonly Func<List<IntPtr>> discoverWindows;
+    readonly Func<IntPtr, uint> getWindowDpi;
     internal long SelectionReads { get; private set; }
     internal long StateReads { get; private set; }
     internal long Publications { get; private set; }
@@ -80,9 +81,13 @@ sealed class PetStateService : IPetStateSource, IDisposable
     bool selectionLoaded;
     int candidateCount;
     string stateError = "missing";
-    Point anchor, savedAnchor;
+    // Persisted Electron values stay in DIP; all published and mouse values
+    // are physical pixels. Always convert from the originals, never cumulatively.
+    Point anchor, savedAnchor, savedAnchorDip, dragStartAnchorDip;
+    uint dpi = 96;
+    bool displayRefreshQueued;
     long nextMetadata, nextDiscovery;
-    int petSize = 112;
+    int petSize = 112, petSizeDip = 112;
     bool anchorKnown, petOpen, colourBusy, dragStarted, dragReleased, started;
     volatile bool closing;
     Color? colour;
@@ -92,12 +97,14 @@ sealed class PetStateService : IPetStateSource, IDisposable
     internal PetTrackingDiagnostic Diagnostic { get; private set; }
 
     internal event Action<PetTrackingDiagnostic> DiagnosticChanged;
-    public PetStateService(string home, string palettePath, Action<Action> dispatch, Func<List<IntPtr>> discoverWindows = null)
+    public PetStateService(string home, string palettePath, Action<Action> dispatch, Func<List<IntPtr>> discoverWindows = null,
+        Func<IntPtr, uint> getWindowDpi = null)
     {
         this.home = home;
         this.dispatch = dispatch;
         palettes = new PetPaletteCatalog(palettePath);
         this.discoverWindows = discoverWindows ?? DiscoverWindows;
+        this.getWindowDpi = getWindowDpi ?? Native.GetDpiForWindow;
         Current = PetState.Empty;
         Diagnostic = new PetTrackingDiagnostic
         {
@@ -375,7 +382,7 @@ sealed class PetStateService : IPetStateSource, IDisposable
                     selectionFileLength = file.Length;
                     selectionLoaded = true;
                     if (size.HasValue)
-                        petSize = size.Value;
+                        petSizeDip = size.Value;
                 }
                 else
                     pet = null;
@@ -434,7 +441,7 @@ sealed class PetStateService : IPetStateSource, IDisposable
             anchorKnown = false;
             if (b != null && b.ContainsKey("x") && b.ContainsKey("y"))
             {
-                savedAnchor = new Point(Convert.ToInt32(b["x"]), Convert.ToInt32(b["y"]));
+                savedAnchorDip = new Point(Convert.ToInt32(b["x"]), Convert.ToInt32(b["y"]));
                 anchorKnown = true;
             }
 
@@ -486,6 +493,50 @@ sealed class PetStateService : IPetStateSource, IDisposable
         return null;
     }
 
+    internal void RefreshDisplayMetrics()
+    {
+        if (closing || !started || displayRefreshQueued)
+            return;
+        displayRefreshQueued = true;
+        // Defer out of WndProc: publishing a new position can itself resize a
+        // window and deliver more display messages.
+        dispatch(() =>
+        {
+            displayRefreshQueued = false;
+            if (!closing)
+            {
+                nextMetadata = 0;
+                Tick();
+            }
+        });
+    }
+
+    void UpdatePhysicalCoordinates(Point? pointer = null)
+    {
+        uint nextDpi = target == IntPtr.Zero ? dpi : getWindowDpi(target);
+        // A transient invalid HWND must not switch a scaled desktop to 100%.
+        if (nextDpi == 0)
+            nextDpi = dpi;
+        if (nextDpi != dpi)
+        {
+            Native.POINT cursor;
+            if (!pointer.HasValue && drag.Active)
+            {
+                if (!Native.GetCursorPos(out cursor))
+                    return;
+                pointer = new Point(cursor.X, cursor.Y);
+            }
+
+            drag.ChangeDpi(pointer ?? Point.Empty, dpi, nextDpi, PetDpi.Scale(dragStartAnchorDip, 96, nextDpi));
+            Program.Record("pet-dpi", new { previous = dpi, current = nextDpi });
+            dpi = nextDpi;
+        }
+
+        savedAnchor = PetDpi.Scale(savedAnchorDip, 96, dpi);
+        petSize = PetDpi.Scale(petSizeDip, 96, dpi);
+        anchor = drag.Resolve(savedAnchor, watch.ElapsedMilliseconds);
+    }
+
     void Tick()
     {
         if (closing)
@@ -515,6 +566,9 @@ sealed class PetStateService : IPetStateSource, IDisposable
             }
         }
 
+        // Poll the foreign window as well as responding to our own DPI messages.
+        // Its notification may arrive later, or while our bubble is hidden.
+        UpdatePhysicalCoordinates();
         bool visible = anchorKnown && petOpen && target != IntPtr.Zero && Native.IsWindowVisible(target) && !Native.IsIconic(target);
         if (!visible)
         {
@@ -605,6 +659,7 @@ sealed class PetStateService : IPetStateSource, IDisposable
     {
         if (closing)
             return;
+        UpdatePhysicalCoordinates(pointer);
         if (down)
         {
             if ((Native.GetAsyncKeyState(17) & 0x8000) != 0)
@@ -622,6 +677,7 @@ sealed class PetStateService : IPetStateSource, IDisposable
             if (Native.GetAncestor(Native.WindowFromPoint(p), 2) != target)
                 return;
             drag.Begin(pointer, anchor, savedAnchor);
+            dragStartAnchorDip = savedAnchorDip;
             dragStarted = true;
             follow.Interval = 16;
         }
@@ -637,9 +693,9 @@ sealed class PetStateService : IPetStateSource, IDisposable
     {
         var screen = Screen.FromPoint(pointer);
         // Native pet layout uses the work area's top/left and the display's bottom,
-        // reserving 8px below the mascot plus the 32px pet control row.
+        // reserving 8 DIP below the mascot plus the 32 DIP pet control row.
         var area = Rectangle.FromLTRB(screen.WorkingArea.Left, screen.WorkingArea.Top,
             screen.WorkingArea.Right, screen.Bounds.Bottom);
-        drag.Move(pointer, area, petSize, 40);
+        drag.Move(pointer, area, petSize, PetDpi.Scale(40, 96, dpi));
     }
 }

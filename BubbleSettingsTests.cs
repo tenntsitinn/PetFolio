@@ -44,10 +44,12 @@ static class BubbleSettingsTests
             Check(settings.DefaultAppearance && settings.OpacityPercent == 90 && !settings.DefaultFrostedGlass && settings.PetFrostedGlass, "Missing settings retain appearance defaults");
             File.WriteAllText(path, "{\"opacityPercent\":20,\"panelCorner\":\"bottom-start\"}");
             settings = store.Load();
-            Check(settings.OpacityPercent == 20 && settings.PanelCorner == "bottom-start" && settings.QuotaEnabled && settings.SystemEnabled, "Legacy appearance settings load with default feature flags");
+            Check(settings.OpacityPercent == 20 && settings.PanelCorner == "left" && settings.QuotaEnabled && settings.SystemEnabled, "Legacy appearance settings load with default feature flags");
+            store.Save(settings);
+            Check(store.Load().PanelCorner == "left", "Migrated left side survives saving and reloading");
             File.WriteAllText(path, "{\"opacityPercent\":200,\"panelCorner\":\"bad\",\"quotaEnabled\":\"bad\",\"systemEnabled\":false,\"appearanceMode\":\"pet\"}");
             settings = store.Load();
-            Check(settings.OpacityPercent == 100 && settings.PanelCorner == "top-end" && settings.QuotaEnabled && !settings.SystemEnabled && !settings.DefaultAppearance, "Invalid field types fall back independently and opacity is clamped");
+            Check(settings.OpacityPercent == 100 && settings.PanelCorner == "right" && settings.QuotaEnabled && !settings.SystemEnabled && !settings.DefaultAppearance, "Invalid field types fall back independently and opacity is clamped");
             File.WriteAllText(path, "{");
             settings = store.Load();
             Check(settings.QuotaEnabled && settings.SystemEnabled && errors == 1, "Malformed settings fall back and report a diagnostic");
@@ -67,7 +69,7 @@ static class BubbleSettingsTests
             };
             store.Save(settings);
             var restored = store.Load();
-            Check(restored.OpacityPercent == 10 && restored.PanelCorner == "bottom-end" && restored.SystemMode && !restored.QuotaEnabled && restored.SystemEnabled,
+            Check(restored.OpacityPercent == 10 && restored.PanelCorner == "right" && restored.SystemMode && !restored.QuotaEnabled && restored.SystemEnabled,
                 "Mode, switches and placement round-trip: " + File.ReadAllText(path) + " (errors=" + errors + ", last=" + lastError + ")");
             Check(!restored.DefaultAppearance && restored.DefaultFrostedGlass && !restored.PetFrostedGlass, "Independent appearance choices round-trip");
             settings.OpacityPercent = 30;
