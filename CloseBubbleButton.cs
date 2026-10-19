@@ -12,7 +12,7 @@ sealed class CloseBubbleButton : Form
     internal const int Diameter = 20, OffsetX = -4, OffsetY = -5;
     readonly Action dismiss;
     readonly ToolTip tooltip = new ToolTip();
-    Color colour;
+    Color colour, ink;
     bool nativeAppearance, dark;
     bool pressed;
     internal CloseBubbleButton(Action handler)
@@ -59,11 +59,12 @@ sealed class CloseBubbleButton : Form
         base.WndProc(ref m);
     }
 
-    internal void SetColour(Color value, bool native = false, bool isDark = false)
+    internal void SetColours(Color value, Color text, bool native = false, bool isDark = false)
     {
-        if (colour == value && nativeAppearance == native && dark == isDark)
+        if (colour == value && ink == text && nativeAppearance == native && dark == isDark)
             return;
         colour = value;
+        ink = text;
         nativeAppearance = native;
         dark = isDark;
         if (IsHandleCreated)
@@ -153,7 +154,7 @@ sealed class CloseBubbleButton : Form
         Render();
     }
 
-    internal static Bitmap Frame(Color fill, bool native = false, bool dark = false)
+    internal static Bitmap Frame(Color fill, Color text, bool native = false, bool dark = false)
     {
         var frame = new Bitmap(Diameter, Diameter, PixelFormat.Format32bppPArgb);
         using (var g = Graphics.FromImage(frame))
@@ -171,7 +172,6 @@ sealed class CloseBubbleButton : Form
             else
                 using (var outline = new Pen(PetTheme.Outline(fill), 1f))
                     g.DrawEllipse(outline, .5f, .5f, Diameter - 1, Diameter - 1);
-            Color text = native ? BubbleAppearance.Text(dark) : PetTheme.Text(fill);
             using (var pen = new Pen(text, 1.5f))
             {
                 pen.StartCap = pen.EndCap = LineCap.Round;
@@ -187,7 +187,7 @@ sealed class CloseBubbleButton : Form
     {
         if (!IsHandleCreated || IsDisposed)
             return;
-        using (var bitmap = Frame(colour, nativeAppearance, dark))
+        using (var bitmap = Frame(colour, ink, nativeAppearance, dark))
         {
             var screen = Native.GetDC(IntPtr.Zero);
             var dc = Native.CreateCompatibleDC(screen);

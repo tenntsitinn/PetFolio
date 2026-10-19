@@ -12,7 +12,7 @@ PetFolio 讓桌面寵物成為工作時有用的小夥伴。**Quota remaining** 
 
 [下載最新版本](https://github.com/tenntsitinn/PetFolio/releases/latest) · [快速開始](#快速開始) · [使用方式](#使用方式) · [開發與擴充](#開發與擴充) · [已知限制](#已知限制)
 
-> **Frosted glass 正在進行灰測。** 可在系統匣 `Appearance → Frosted glass` 啟用或停用背景模糊；Default 預設關閉、Pet colour 預設開啟，兩種外觀分別保存選擇。歡迎回報顯示異常或效能問題。
+> **Frosted glass 正在進行灰測。** 可在系統匣 `Appearance → Frosted glass` 啟用或停用背景模糊；Default 禁用毛玻璃；Pet colour 預設開啟並保存選擇。歡迎回報顯示異常或效能問題。
 
 ![功能概覽與使用場景](docs/images/zh-hant/01-overview.png)
 
@@ -43,11 +43,13 @@ PetFolio 讓桌面寵物成為工作時有用的小夥伴。**Quota remaining** 
 - **Quota remaining**：透過 Codex CLI 的 `account/rateLimits/read` 查詢，以回傳的計算週期顯示剩餘百分比；充值積分不混入訂閱額度。
 - **自動與手動刷新**：啟用時立即查詢，之後每五分鐘刷新；單擊氣泡可立即更新。查詢中保留已有數值，失敗時保留最近一次結果並標示更新失敗。
 - **跟隨與定位**：拖動寵物時氣泡持續跟隨，以寵物畫布中心與目前螢幕工作區中心比較：寵物在左半區時氣泡放右側，到達右半區時改放左側，垂直居中於寵物畫布。靜止重新佈局時優先保留已有側，空間不足時依溢出代價避讓，最後限制在工作區內。拖動氣泡仍可手動選側；再次拖動寵物會重新按中線選側。舊的上下方位設定會沿用原本的左右側作為初始方向。
-- **配色與玻璃背景**：Default 使用原生氣泡配色；Pet colour 配色優先使用寵物源圖快取，無有效快取時嘗試從寵物視窗取色。兩種外觀支援圓角並共用原生 Status Bubble 陰影，陰影深淺隨 Codex 主題同步；Pet colour 提供 10%～100% 背景不透明度；玻璃初始化失敗時回退為半透明背景。
+- **配色與玻璃背景**：Default 使用原生氣泡配色；Pet colour 配色優先使用寵物源圖快取，無有效快取時嘗試從寵物視窗取色。兩種外觀支援圓角並共用原生 Status Bubble 陰影，陰影深淺隨 Codex 主題同步；Pet colour 提供 0%～100%（步進 1%） 背景不透明度；玻璃初始化失敗時回退為半透明背景。
 - **減少操作干擾**：氣泡不搶走編輯器焦點，透明圓角及背景、陰影區域可讓滑鼠穿透；寵物隱藏或關閉時，氣泡也會隱藏。
 - **獨立功能開關**：可暫時隱藏氣泡，或分別停用額度與系統模式；功能開關、透明度與相對方位會保存在本機。
 
 額度來源是 **CLI 登入帳號**。目前不會檢查它是否與 Codex 桌面端帳號一致，使用多帳號時請自行確認。
+
+目前 1.5.0 為測試版：多屏座標鏈路已加入，但混合 DPI 多屏尚待實機驗收；詳見 [多屏開發記錄](docs/MULTI_SCREEN.md)。外觀圖為早期示意，當前滑塊與選單以程式為準。
 
 ## 快速開始
 
@@ -161,7 +163,7 @@ Windows 若停用了此登入啟動項，需在系統的啟動應用設定重新
 | 系統匣 `Refresh` | 刷新目前模式的資料與字體顏色 |
 | 系統匣 `Appearance → Default / Pet colour` | Default 跟隨 Codex 深淺色，Codex 選擇 system 時跟隨 Windows；使用原生氣泡配色及固定約 90% 不透明度、不模糊背景；Pet colour 使用寵物配色及毛玻璃 |
 | 系統匣 `Appearance → Opacity` | 僅 Pet colour 可調整；切回時恢復先前設定 |
-| 系統匣 `Appearance → Frosted glass` | 啟用／停用背景模糊；Default 與 Pet colour 分別記住設定，初始為關／開 |
+| 系統匣 `Appearance → Frosted glass` | 啟用／停用背景模糊；Default 禁用；Pet colour 可切換並記住設定 |
 
 | 懸停後點擊左上角 × | 隱藏氣泡，背景額度刷新繼續執行 |
 | 系統匣 `Show Bubble` | 恢復被隱藏的氣泡 |
@@ -178,7 +180,7 @@ Default Bubble 同樣跟隨 Codex 主題，在啟動、每次實際額度查詢�
 
 隱藏狀態僅限目前執行階段；兩項功能開關、目前模式、背景不透明度與偏好方位會保留。只有兩項都啟用時才可雙擊或使用 `Switch to …` 切換；停用目前模式會切到另一個已啟用模式，啟用另一項則不會改變目前模式。全部停用時隱藏氣泡，`Show Bubble` 與 `Refresh` 置灰。
 
-Default 使用客戶端原生文字色，跟隨 Codex 主題；Codex 選擇 system 時跟隨 Windows。以下透明度與背景取樣規則僅適用於 Pet colour：百分比數字使用 Alpha=1，標題、指標標籤、網速與更新時間使用相同 RGB、Alpha 0.8（204/255），以透明度呈現層次。背景色辨識在啟動後首次額度查詢、每次實際自動或手動額度查詢，以及套用新透明度時進行；System 模式在 10%／20% 背景不透明度下，也會隨每兩秒指標刷新重新取樣。氣泡隱藏時跳過取樣；移動、寵物配色更新與一般重繪使用上次結果。取樣避開文字區域，以氣泡空白邊緣估計背景，只在記憶體處理，不保存畫面。氣泡背景不透明度為 10% 或 20% 時，不論主色深淺，都根據背景對比直接選擇黑字或白字，不加文字描邊；取樣失敗保留上次結果，尚無結果時沿用主色配字。
+Default 使用客戶端原生文字色，跟隨 Codex 主題；Codex 選擇 system 時跟隨 Windows。以下透明度與背景取樣規則僅適用於 Pet colour：百分比數字使用 Alpha=1，標題、指標標籤、網速與更新時間使用相同 RGB、Alpha 0.8（204/255），以透明度呈現層次。背景色辨識在啟動後首次額度查詢、每次實際自動或手動額度查詢，以及套用新透明度時進行；System 模式在 0%～20%（含 20%） 背景不透明度下，也會隨每兩秒指標刷新重新取樣。氣泡隱藏時跳過取樣；移動、寵物配色更新與一般重繪使用上次結果。取樣避開文字區域，以氣泡空白邊緣估計背景，只在記憶體處理，不保存畫面。氣泡背景不透明度為 0%～20%（含 20%） 時，不論主色深淺，都根據背景對比直接選擇黑字或白字，不加文字描邊；取樣失敗保留上次結果，尚無結果時沿用主色配字。
 
 ## 本機資料與設定
 
@@ -321,7 +323,7 @@ Extensibility is a core requirement. The application host, shared pet state, and
 
 PetFolio includes a standalone Windows application and an installable local Codex plugin that starts, stops, and diagnoses the companion. It has not been published to the public plugin directory. PetFolio is the project name; Quota remaining and System Usage are its two features.
 
-> **Frosted glass is currently in testing.** Toggle background blur in `Appearance → Frosted glass`. Default starts with blur off and Pet colour with blur on; each appearance remembers its own choice. Please report rendering or performance issues.
+> **Frosted glass is currently in testing.** Toggle background blur in `Appearance → Frosted glass`. Default disables blur; Pet colour starts with blur on and remembers its choice. Please report rendering or performance issues.
 
 [Download the latest release](https://github.com/tenntsitinn/PetFolio/releases/latest) · [Getting started](#getting-started) · [Using the application](#using-the-application)
 
@@ -354,7 +356,7 @@ Both modes share a **208 × 104 px** bubble titled **Quota remaining / System us
 - **Quota remaining:** Uses the Codex CLI `account/rateLimits/read` response to display remaining percentages for the returned usage windows. Purchased credits are kept separate from subscription quota.
 - **Automatic and manual refresh:** Queries immediately when enabled and every five minutes afterward. Click the bubble to refresh. Existing values remain visible during updates and after failures, with a failure indicator when appropriate.
 - **Following and placement:** While dragging the pet, compares its canvas center with the current monitor's work-area center: the bubble goes right when the pet is in the left half, and left upon reaching the right half. It stays vertically centered on the pet canvas. Idle layout favors the existing side, uses overflow scoring when space is limited, and constrains the result to the work area. Dragging the bubble still selects a side manually; the next pet drag selects again by the midpoint. Older corner preferences retain their left or right side as the initial direction.
-- **Colors and glass background:** Default uses native bubble colours. Pet colour prefers a valid palette cache derived from pet source images; otherwise attempts to sample the pet window. Both appearances support rounded corners and share the native Status Bubble shadow, with strength following the Codex theme; Pet colour provides background opacity from 10% to 100%. Falls back to a translucent background if glass initialization fails.
+- **Colors and glass background:** Default uses native bubble colours. Pet colour prefers a valid palette cache derived from pet source images; otherwise attempts to sample the pet window. Both appearances support rounded corners and share the native Status Bubble shadow, with strength following the Codex theme; Pet colour provides background opacity from 0% to 100% in 1% increments. Falls back to a translucent background if glass initialization fails.
 - **Less interference:** Does not take focus from your editor. Transparent corners, background, and shadow regions allow mouse input to pass through. The bubble hides when the pet is hidden or closed.
 - **Independent feature controls:** Temporarily hide the bubble or enable quota and system modes independently. Feature switches, background opacity and preferred placement are saved locally.
 
@@ -472,7 +474,7 @@ still require compatibility testing. Plugin installation does not enable this op
 | Tray: `Refresh` | Refresh the current mode's data and text colour |
 | Tray: `Appearance → Default / Pet colour` | Default follows Codex light/dark mode, or Windows when Codex selects system, using native bubble colours and fixed approximately 90% opacity without background blur; Pet colour uses the pet palette and frosted glass |
 | Tray: `Appearance → Opacity` | Adjustable only in Pet colour; the previous value is restored when switching back |
-| Tray: `Appearance → Frosted glass` | Enable / disable background blur; Default and Pet colour remember separate choices, initially off / on |
+| Tray: `Appearance → Frosted glass` | Enable / disable background blur; disabled in Default; Pet colour remembers its choice |
 
 | Hover and click the upper-left × | Hide the bubble while background refresh continues |
 | Tray: `Show Bubble` | Restore the hidden bubble |
@@ -489,7 +491,7 @@ Default Bubble also follows Codex's theme. It syncs at startup, each accepted qu
 
 Hiding applies only to the current session. Both feature switches, the selected mode, background opacity and preferred placement are retained. Double-click and `Switch to …` are available only when both modes are enabled. Disabling the current mode selects the other enabled mode; enabling another mode preserves the current selection. With both disabled, the bubble is hidden and `Show Bubble` / `Refresh` are disabled.
 
-Default uses native client text colours and follows the Codex theme, or Windows when Codex selects system. The following opacity and background-sampling rules apply only to Pet colour: percentage values use alpha 1; titles, metric labels, network rates and update time use the same RGB with alpha 0.8 (204/255) for visual depth. Background sampling occurs with the first quota query after startup, each accepted automatic or manual quota query, and applying a new opacity setting. At 10% / 20% background opacity, System mode also samples with each two-second metrics refresh. Hidden bubbles skip sampling; movement, pet color updates, and ordinary repaint reuse the cached result. Blank bubble margins estimate the background without sampling text. Captures remain in memory and are not saved. Both light and dark pet colors at 10% or 20% opacity use plain black or white text according to background contrast, without a text outline. Failed captures retain the previous result; without a result, the original pet-based text colour is used.
+Default uses native client text colours and follows the Codex theme, or Windows when Codex selects system. The following opacity and background-sampling rules apply only to Pet colour: percentage values use alpha 1; titles, metric labels, network rates and update time use the same RGB with alpha 0.8 (204/255) for visual depth. Background sampling occurs with the first quota query after startup, each accepted automatic or manual quota query, and applying a new opacity setting. At 0–20% background opacity (inclusive), System mode also samples with each two-second metrics refresh. Hidden bubbles skip sampling; movement, pet color updates, and ordinary repaint reuse the cached result. Blank bubble margins estimate the background without sampling text. Captures remain in memory and are not saved. Both light and dark pet colors at 0–20% opacity (inclusive) use plain black or white text according to background contrast, without a text outline. Failed captures retain the previous result; without a result, the original pet-based text colour is used.
 
 ### Local data and settings
 

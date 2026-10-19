@@ -57,23 +57,8 @@ static class PetDragTests
         Check(PetDpi.Scale(saved, 96, 96) == saved, "100% is an identity conversion");
         Check(PetDpi.Scale(112, 96, 168) == 196 && PetDpi.Scale(112, 96, 192) == 224, "175% and 200% sizes stay in physical pixels");
         Check(PetDpi.Scale(80, 96, 120) == 100 && PetDpi.Scale(224, 96, 144) == 336, "Minimum and maximum configured sizes scale after DIP validation");
-        d.Begin(new Point(550, 440), saved, saved);
-        d.Move(new Point(650, 540), area, 112, 40);
-        d.ChangeDpi(new Point(650, 540), 96, 120, new Point(625, 500));
-        Check(d.Active && d.Resolve(new Point(625, 500), 2400) == new Point(750, 625), "DPI change rebases an active drag in the new physical space");
-        d.Move(new Point(660, 550), area, 140, 50);
-        Check(d.Resolve(new Point(625, 500), 2416) == new Point(760, 635), "Mouse delta stays ten physical pixels after DPI change");
-        d.End(2500);
-        d.ChangeDpi(Point.Empty, 120, 144, new Point(750, 600));
-        Check(!d.Active && d.Resolve(new Point(750, 600), 2516) == new Point(912, 762), "DPI change preserves release reconciliation until save");
-        Check(d.Resolve(new Point(750, 600), 4500) == new Point(750, 600), "DPI change does not extend the release timeout");
-        var roundedSave = PetDpi.Scale(new Point(312, 713), 96, 120);
-        d.Begin(new Point(420, 920), roundedSave, roundedSave);
-        d.Move(new Point(430, 930), new Rectangle(0, 0, 3000, 2000), 140, 50);
-        d.End(5000);
-        var nextSave = PetDpi.Scale(new Point(312, 713), 96, 144);
-        d.ChangeDpi(Point.Empty, 120, 144, nextSave);
-        Check(d.Resolve(nextSave, 5016) == new Point(480, 1081), "Fractional saved coordinates cannot prematurely end release reconciliation");
+        // DPI projection now belongs to PetDisplayCoordinates and the service;
+        // PetMultiMonitorTrackingTests covers changes during release waiting.
         d.Begin(Point.Empty, Point.Empty, Point.Empty);
         d.Move(new Point(5000, 5000), area, PetDpi.Scale(112, 96, 120), PetDpi.Scale(40, 96, 120));
         Check(d.Resolve(Point.Empty, 5100) == new Point(1780, 878), "Bottom reserve and pet dimensions share the physical coordinate space");

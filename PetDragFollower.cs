@@ -11,6 +11,14 @@ sealed class PetDragFollower
     bool pending;
     internal bool Active { get; private set; }
 
+    internal bool HasPosition
+    {
+        get
+        {
+            return Active || pending;
+        }
+    }
+
     internal void Begin(Point pointer, Point renderedAnchor, Point savedAnchor)
     {
         press = pointer;
@@ -38,16 +46,6 @@ sealed class PetDragFollower
         Active = false;
         pending = true;
         releasedAt = now;
-    }
-
-    internal void ChangeDpi(Point pointer, uint oldDpi, uint newDpi, Point savedAnchorAtStart)
-    {
-        // Single-screen coordinates share the desktop origin. Rebase the live
-        // drag, including a pending release, before accepting more mouse deltas.
-        current = PetDpi.Scale(current, oldDpi, newDpi);
-        savedAtStart = savedAnchorAtStart;
-        seed = current;
-        press = pointer;
     }
 
     internal Point Resolve(Point savedAnchor, long now)

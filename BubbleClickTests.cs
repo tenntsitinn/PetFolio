@@ -11,10 +11,11 @@ using System.Windows.Forms;
 static class BubbleClickTests
 {
     static int checks;
+    static string settingsError;
     static void Check(bool ok, string message)
     {
         if (!ok)
-            throw new Exception(message);
+            throw new Exception(message + (settingsError == null ? "" : " Settings diagnostic: " + settingsError));
         checks++;
     }
 
@@ -73,10 +74,16 @@ static class BubbleClickTests
         return (string)typeof(QuotaLabel).GetField(field, BindingFlags.Instance | BindingFlags.NonPublic).GetValue(view);
     }
 
+    static Color CloseInk(QuotaLabel view)
+    {
+        return (Color)typeof(CloseBubbleButton).GetField("ink", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(view.DismissButton);
+    }
+
     static QuotaLabel LoadSavedView()
     {
         var settings = new BubbleSettingsStore(System.IO.Path.Combine(Program.DataFolder, "appearance.json"), (k, d) =>
         {
+            settingsError = new System.Web.Script.Serialization.JavaScriptSerializer().Serialize(d);
         }).Load();
         return new QuotaLabel("", settings, new BubbleContentState(settings));
     }
@@ -131,6 +138,7 @@ static class BubbleClickTests
         {
         }, (k, d) =>
         {
+            if (k == "appearance-error") settingsError = new System.Web.Script.Serialization.JavaScriptSerializer().Serialize(d);
         }))
         {
             Action drain = () =>
@@ -172,6 +180,7 @@ static class BubbleClickTests
             Check(source.Entered.WaitOne(5000), "Single click starts a real feature refresh");
             Check(clicks == 1 && Text(view, "status") == "Updating..." && Text(view, "value1") == amount, "Click shows busy feedback while preserving the amount");
             Check(backgroundReads == 1 && view.UsesBlackText, "Manual quota refresh detects light background and uses black text");
+            Check(CloseInk(view).ToArgb() == Color.Black.ToArgb(), "Close glyph uses the same adaptive black ink after manual refresh");
             Click(view);
             Click(view);
             Check(source.Calls == 2, "Repeated clicks during refresh do not start extra queries");
@@ -185,11 +194,13 @@ static class BubbleClickTests
             var timer = (System.Windows.Forms.Timer)typeof(QuotaService).GetField("refresh", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(service);
             typeof(System.Windows.Forms.Timer).GetMethod("OnTick", BindingFlags.Instance | BindingFlags.NonPublic).Invoke(timer, new object[] { EventArgs.Empty });
             Check(source.Entered.WaitOne(5000) && backgroundReads == 2 && !view.UsesBlackText, "Automatic timer refresh notices dark background and restores white text");
+            Check(CloseInk(view).ToArgb() == Color.White.ToArgb(), "Unchanged tint still updates the close glyph when desktop changes");
             source.Release.Set();
             drain();
             background = Color.White;
             ((ToolStripMenuItem)feature.Commands[feature.Commands.Length - 1]).PerformClick();
             Check(source.Entered.WaitOne(5000) && backgroundReads == 3 && view.UsesBlackText, "Tray refresh notices background becoming light again");
+            Check(CloseInk(view).ToArgb() == Color.Black.ToArgb(), "Tray refresh synchronizes close glyph ink");
             source.Release.Set();
             drain();
             background = Color.Black;
@@ -278,12 +289,15 @@ static class BubbleClickTests
             background = Color.White;
             systemTick.Invoke(systemTimer, new object[] { EventArgs.Empty });
             Check(view.UsesBlackText, "System refresh switches low-opacity ink to black on a light desktop");
+            Check(CloseInk(view).ToArgb() == Color.Black.ToArgb(), "System sampling synchronizes close glyph to black");
             background = Color.Black;
             systemTick.Invoke(systemTimer, new object[] { EventArgs.Empty });
             Check(!view.UsesBlackText, "System refresh switches low-opacity ink to white on a dark desktop");
+            Check(CloseInk(view).ToArgb() == Color.White.ToArgb(), "System sampling synchronizes close glyph to white");
             background = null;
             systemTick.Invoke(systemTimer, new object[] { EventArgs.Empty });
             Check(!view.UsesBlackText, "Failed system background capture preserves the last ink choice");
+            Check(CloseInk(view).ToArgb() == Color.White.ToArgb(), "Failed capture preserves matching close glyph ink");
             view.SetBubbleVisible(false);
             Check(!systemTimer.Enabled, "Hiding stops system sampling");
             int hiddenReads = backgroundReads;
@@ -334,7 +348,7 @@ static class BubbleClickTests
             var appearance = (ToolStripMenuItem)view.Commands[0];
             var defaultItem = (ToolStripMenuItem)appearance.DropDownItems[0];
             var petItem = (ToolStripMenuItem)appearance.DropDownItems[1];
-            var opacity = (ToolStripMenuItem)appearance.DropDownItems[3];
+            var opacity = (MenuCaption)appearance.DropDownItems[5];
             var colourField = typeof(QuotaLabel).GetField("panelColor", BindingFlags.Instance | BindingFlags.NonPublic);
             bool? darkTheme = false;
             view.ReadCodexTheme = () => darkTheme;
@@ -344,11 +358,13 @@ static class BubbleClickTests
                 Check(!glass.BlurEnabled, "Default removes background blur from composition");
             Check(appearance.Text == "Appearance" && defaultItem.Checked && !petItem.Checked && !opacity.Enabled, "Default selection checks one appearance and locks opacity");
             Check((Color)colourField.GetValue(view) == Color.FromArgb(230, 255, 255, 255), "Light Default uses native white at fixed E6 alpha");
+            Check(CloseInk(view).ToArgb() == BubbleAppearance.Text(false).ToArgb(), "Light Default shares exact native text RGBA with close glyph");
             typeof(QuotaLabel).GetMethod("SetOpacity", BindingFlags.Instance | BindingFlags.NonPublic).Invoke(view, new object[] { 100 });
             Check(((Color)colourField.GetValue(view)).A == 230, "Default ignores direct opacity changes");
             darkTheme = true;
             view.RefreshCodexAppearance();
             Check((Color)colourField.GetValue(view) == Color.FromArgb(230, 32, 32, 32), "Theme refresh switches Default to the native dark surface");
+            Check(CloseInk(view).ToArgb() == BubbleAppearance.Text(true).ToArgb(), "Dark Default shares exact native text RGBA with close glyph");
             darkTheme = null;
             view.RefreshCodexAppearance();
             Check((Color)colourField.GetValue(view) == Color.FromArgb(230, 32, 32, 32), "Theme read failure retains the current palette");
@@ -365,18 +381,44 @@ static class BubbleClickTests
                 Check(glass.BlurEnabled, "Pet colour restores background blur");
             Check(opacity.Enabled && petItem.Checked && !defaultItem.Checked, "Pet colour unlocks opacity");
             Check((Color)colourField.GetValue(view) == Color.FromArgb(51, Color.CornflowerBlue), "Returning to Pet colour restores 20 percent with the latest pet colour");
+            var slider = (OpacitySlider)((ToolStripControlHost)appearance.DropDownItems[6]).Control;
+            Check(slider.Minimum == 0 && slider.Maximum == 100 && slider.SmallChange == 1 && slider.LargeChange == 1,
+                "Opacity slider retains the range with one-percent increments");
+            typeof(OpacitySlider).GetMethod("OnKeyDown", BindingFlags.Instance | BindingFlags.NonPublic).Invoke(slider, new object[] { new KeyEventArgs(Keys.Right) });
+            Check(slider.Value == 21, "Keyboard moves the custom slider by one percent");
+            typeof(OpacitySlider).GetMethod("OnKeyDown", BindingFlags.Instance | BindingFlags.NonPublic).Invoke(slider, new object[] { new KeyEventArgs(Keys.Home) });
+            Check(slider.Value == 0 && slider.AccessibilityObject.Value == "0%", "Home reaches zero and exposes the accessible value");
+            typeof(OpacitySlider).GetMethod("OnKeyDown", BindingFlags.Instance | BindingFlags.NonPublic).Invoke(slider, new object[] { new KeyEventArgs(Keys.End) });
+            Check(slider.Value == 100, "End reaches full opacity");
+            typeof(OpacitySlider).GetMethod("OnMouseDown", BindingFlags.Instance | BindingFlags.NonPublic).Invoke(slider, new object[] { new MouseEventArgs(MouseButtons.Left, 1, slider.Width / 2, slider.Height / 2, 0) });
+            Check(slider.Value == 50, "Clicking the middle of the rail selects fifty percent");
+            typeof(OpacitySlider).GetMethod("OnMouseMove", BindingFlags.Instance | BindingFlags.NonPublic).Invoke(slider, new object[] { new MouseEventArgs(MouseButtons.Left, 0, slider.Width + 100, slider.Height / 2, 0) });
+            Check(slider.Value == 100, "Dragging past the rail clamps to the endpoint");
+            typeof(OpacitySlider).GetMethod("OnMouseUp", BindingFlags.Instance | BindingFlags.NonPublic).Invoke(slider, new object[] { new MouseEventArgs(MouseButtons.Left, 1, slider.Width, slider.Height / 2, 0) });
+            slider.Value = 17;
+            Check(((Color)colourField.GetValue(view)).A == 43 && opacity.Text == "Opacity: 17%",
+                "Slider previews an intermediate percentage and displays its value");
+            using (var restored = LoadSavedView())
+            {
+                var saved = new BubbleSettings();
+                restored.CopyAppearanceTo(saved);
+                Check(saved.OpacityPercent == 17, "Intermediate slider percentage survives restart");
+            }
+            slider.Value = 20;
             using (var restored = LoadSavedView())
                 Check(!restored.DefaultAppearance, "Pet appearance survives restart");
-            var frosted = (ToolStripMenuItem)appearance.DropDownItems[4];
+            var frosted = (ToolStripMenuItem)appearance.DropDownItems[3];
             Check(frosted.Checked && view.FrostedGlass, "Pet colour starts with frosted glass enabled");
             frosted.PerformClick();
             Check(!frosted.Checked && !view.FrostedGlass && (glass == null || !glass.BlurEnabled), "Frosted glass can be disabled from the menu");
             defaultItem.PerformClick();
-            Check(!frosted.Checked, "Default retains its independent blur setting");
+            Check(!frosted.Checked && !frosted.Enabled, "Default disables and unchecks frosted glass");
             frosted.PerformClick();
-            Check(frosted.Checked && view.FrostedGlass && !opacity.Enabled, "Default can enable blur without unlocking opacity");
+            view.SetFrostedGlass(true);
+            Check(!frosted.Checked && !view.FrostedGlass && !opacity.Enabled, "Default rejects blur activation including direct calls");
+            Check(!slider.Enabled, "Default disables the custom opacity control");
             using (var restored = LoadSavedView())
-                Check(restored.DefaultAppearance && restored.FrostedGlass, "Default blur choice survives restart");
+                Check(restored.DefaultAppearance && !restored.FrostedGlass, "Default remains unblurred after restart");
             petItem.PerformClick();
             Check(!frosted.Checked && !view.FrostedGlass, "Returning to Pet colour restores its disabled blur choice");
             using (var restored = LoadSavedView())

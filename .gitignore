@@ -1,6 +1,9 @@
 # Local executables and temporary test builds
 *.exe
 .test-build/
+proxy-env-backup-*.json
+PetFolio-DPI-drag-fix-*/
+PetFolio-DPI-drag-fix-*.zip
 __pycache__/
 *.pyc
 

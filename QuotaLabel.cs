@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Drawing2D;
@@ -68,7 +67,7 @@ class QuotaLabel : Form
     {
         get
         {
-            return DefaultAppearance ? defaultFrostedGlass : petFrostedGlass;
+            return !DefaultAppearance && petFrostedGlass;
         }
     }
 
@@ -90,10 +89,19 @@ class QuotaLabel : Form
         }
     }
 
+    Color PrimaryTextColour
+    {
+        get
+        {
+            return DefaultAppearance ? BubbleAppearance.Text(codexDark) : PetTheme.Text(panelColor, desktopBackground);
+        }
+    }
+
     GlassBackdrop glass;
     CloseBubbleButton dismissButton;
     readonly ToolStripMenuItem showBubble;
-    readonly ToolStripMenuItem opacityMenu;
+    readonly MenuCaption opacityMenu;
+    readonly ToolStripControlHost opacityControl;
     readonly ToolStripMenuItem appearanceMenu;
     readonly ToolStripMenuItem defaultAppearance;
     readonly ToolStripMenuItem petAppearance;
@@ -139,7 +147,7 @@ class QuotaLabel : Form
     readonly bool diagnosticMode;
     bool bubbleRequested = true;
     Point previewPosition;
-    readonly List<ToolStripMenuItem> opacityChoices = new List<ToolStripMenuItem>();
+    readonly OpacitySlider opacitySlider;
     readonly ToolTip refreshTip = new ToolTip();
     internal event Action RefreshRequested;
     internal event Action<bool> ModeRequested;
@@ -173,7 +181,7 @@ class QuotaLabel : Form
         this.content = content;
         opacityPercent = settings.OpacityPercent;
         DefaultAppearance = settings.DefaultAppearance;
-        defaultFrostedGlass = settings.DefaultFrostedGlass;
+        defaultFrostedGlass = false;
         petFrostedGlass = settings.PetFrostedGlass;
         ReadCodexTheme = () => CodexMenuTheme.Read(home, ReadSystemDark);
         Text = "Quota Bubble";
@@ -214,22 +222,20 @@ class QuotaLabel : Form
         placement = new PetPanelPlacement(settings.PanelCorner);
         codexDark = ReadCodexTheme() ?? false;
         panelColor = DefaultAppearance ? BubbleAppearance.Surface(codexDark) : WithOpacity(petColour);
-        opacityMenu = new ToolStripMenuItem("Opacity");
-        for (int percent = 10; percent <= 100; percent += 10)
+        opacityMenu = new MenuCaption("Opacity: " + opacityPercent + "%");
+        opacitySlider = new OpacitySlider
         {
-            var item = new ToolStripMenuItem(percent + "%");
-            item.Tag = percent;
-            item.Checked = percent == opacityPercent;
-            item.Click += (s, e) => SetOpacity((int)((ToolStripMenuItem)s).Tag);
-            opacityChoices.Add(item);
-            opacityMenu.DropDownItems.Add(item);
-        }
+            Value = opacityPercent, AutoSize = false,
+            Size = new Size(176, 28), AccessibleName = "Opacity (%)"
+        };
+        opacityControl = new ToolStripControlHost(opacitySlider);
+        opacitySlider.ValueChanged += (s, e) => SetOpacity(opacitySlider.Value);
 
         appearanceMenu = new ToolStripMenuItem("Appearance");
         defaultAppearance = new ToolStripMenuItem("Default", null, (s, e) => SetDefaultAppearance(true));
         petAppearance = new ToolStripMenuItem("Pet colour", null, (s, e) => SetDefaultAppearance(false));
         frostedGlass = new ToolStripMenuItem("Frosted glass", null, (s, e) => SetFrostedGlass(!FrostedGlass));
-        appearanceMenu.DropDownItems.AddRange(new ToolStripItem[] { defaultAppearance, petAppearance, new ToolStripSeparator(), opacityMenu, frostedGlass });
+        appearanceMenu.DropDownItems.AddRange(new ToolStripItem[] { defaultAppearance, petAppearance, new ToolStripSeparator(), frostedGlass, new ToolStripSeparator(), opacityMenu, opacityControl });
         UpdateAppearanceMenu();
         showBubble = new ToolStripMenuItem("Show Bubble", null, (s, e) => SetBubbleVisible(true));
         showBubble.Enabled = false;
@@ -513,17 +519,16 @@ class QuotaLabel : Form
         defaultAppearance.Checked = DefaultAppearance;
         petAppearance.Checked = !DefaultAppearance;
         opacityMenu.Enabled = !DefaultAppearance;
+        opacityControl.Enabled = !DefaultAppearance;
+        frostedGlass.Enabled = !DefaultAppearance;
         frostedGlass.Checked = FrostedGlass;
     }
 
     internal void SetFrostedGlass(bool enabled)
     {
-        if (closing)
+        if (closing || DefaultAppearance)
             return;
-        if (DefaultAppearance)
-            defaultFrostedGlass = enabled;
-        else
-            petFrostedGlass = enabled;
+        petFrostedGlass = enabled;
         desktopBackground = null;
         UpdateAppearanceMenu();
         NotifySettingsChanged();
@@ -615,7 +620,7 @@ class QuotaLabel : Form
         systemMetrics = metrics;
         // System refreshes independently of quota. Low-opacity ink must follow
         // the current desktop rather than wait for the five-minute quota timer.
-        if (manual || opacityPercent == 10 || opacityPercent == 20)
+        if (manual || opacityPercent <= 20)
             RefreshBackground();
         RenderFrame();
     }
@@ -633,12 +638,15 @@ class QuotaLabel : Form
 
     void SetOpacity(int percent)
     {
-        if (DefaultAppearance)
+        if (closing || DefaultAppearance)
+            return;
+        percent = Math.Max(0, Math.Min(100, percent));
+        if (opacityPercent == percent)
             return;
         opacityPercent = percent;
         panelColor = WithOpacity(panelColor);
-        foreach (var item in opacityChoices)
-            item.Checked = (int)item.Tag == percent;
+        opacitySlider.Value = percent;
+        opacityMenu.Text = "Opacity: " + percent + "%";
         NotifySettingsChanged();
         // Commit the new tint before sampling: the sampler removes this alpha
         // from the visible glass. Movement and ordinary repaint never sample.
@@ -818,7 +826,7 @@ class QuotaLabel : Form
 
         dismissButton = new CloseBubbleButton(() => SetBubbleVisible(false));
         dismissButton.Owner = this;
-        dismissButton.SetColour(panelColor);
+        dismissButton.SetColours(panelColor, PrimaryTextColour, DefaultAppearance, codexDark);
     }
 
     protected override void OnPaint(PaintEventArgs e)
@@ -838,8 +846,10 @@ class QuotaLabel : Form
             glass.SetTint(panelColor);
         }
 
+        // Resolve adaptive ink once for both the content and its close glyph.
+        Color fg = PrimaryTextColour;
         if (dismissButton != null)
-            dismissButton.SetColour(panelColor, DefaultAppearance, codexDark);
+            dismissButton.SetColours(panelColor, fg, DefaultAppearance, codexDark);
         using (var bitmap = new Bitmap(Width, Height, System.Drawing.Imaging.PixelFormat.Format32bppPArgb))
         {
             using (var g = Graphics.FromImage(bitmap))
@@ -859,7 +869,6 @@ class QuotaLabel : Form
                     using (var shape = Rounded(new Rectangle(0, 0, Width, Height), BubbleLayout.Radius))
                     using (var hit = new SolidBrush(Color.FromArgb(1, panelColor.R, panelColor.G, panelColor.B)))
                         g.FillPath(hit, shape);
-                Color fg = DefaultAppearance ? BubbleAppearance.Text(codexDark) : PetTheme.Text(panelColor, desktopBackground);
                 Color muted = DefaultAppearance ? BubbleAppearance.Secondary(codexDark) : PetTheme.Secondary(panelColor, desktopBackground);
                 // Inset the one-pixel stroke so antialiasing stays inside the HWND.
                 using (var outline = Rounded(new RectangleF(.5f, .5f, Width - 1, Height - 1), BubbleLayout.Radius - .5f))

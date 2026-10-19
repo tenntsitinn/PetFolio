@@ -104,12 +104,12 @@ static class PetTheme
         return Contrast(surface, Mix(surface, ink, ink.A / 255.0));
     }
 
-    // At 10% / 20%, the desktop can reverse the tint's apparent brightness.
+    // At 0%–20%, the desktop can reverse the tint's apparent brightness.
     // Choose plain ink from the cached composite for both light and dark pets.
     public static Color Text(Color background, Color? desktop)
     {
         var original = Text(background);
-        if ((background.A != 26 && background.A != 51) || !desktop.HasValue)
+        if (background.A > 51 || !desktop.HasValue)
             return original;
         var surface = Mix(desktop.Value, background, background.A / 255.0);
         // Select the shared RGB using the softer status text; the primary ink

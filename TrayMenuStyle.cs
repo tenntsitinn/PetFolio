@@ -5,6 +5,13 @@ using System.Drawing.Drawing2D;
 using System.Runtime.InteropServices;
 using System.Windows.Forms;
 
+// A noninteractive caption using the same text column as menu commands.
+sealed class MenuCaption : ToolStripMenuItem
+{
+    internal MenuCaption(string text) : base(text) { TextAlign = ContentAlignment.MiddleLeft; }
+    public override bool CanSelect { get { return false; } }
+}
+
 // Presentation only: existing ToolStrip items retain their events and state.
 sealed class TrayMenuStyle : IDisposable
 {
@@ -12,6 +19,8 @@ sealed class TrayMenuStyle : IDisposable
     readonly Font font = (Font)SystemFonts.MenuFont.Clone();
     readonly Renderer renderer = new Renderer();
     readonly Timer themeTimer = new Timer();
+    readonly Timer submenuTimer = new Timer();
+    readonly Dictionary<ToolStripDropDown, DateTime> outsideSince = new Dictionary<ToolStripDropDown, DateTime>();
     internal Func<bool?> ReadTheme;
     internal bool Dark
     {
@@ -28,6 +37,32 @@ sealed class TrayMenuStyle : IDisposable
         themeTimer.Interval = 2000;
         themeTimer.Tick += (s, e) => RefreshTheme();
         themeTimer.Start();
+        submenuTimer.Interval = 100;
+        submenuTimer.Tick += (s, e) => UpdateSubmenus(Cursor.Position);
+        submenuTimer.Start();
+    }
+
+    internal void UpdateSubmenus(Point pointer)
+    {
+        foreach (var menu in menus)
+        {
+            if (menu.IsDisposed || !menu.Visible || menu.OwnerItem == null)
+            {
+                outsideSince.Remove(menu);
+                continue;
+            }
+            var owner = menu.OwnerItem;
+            bool insideOwner = owner.Owner != null && owner.Owner.RectangleToScreen(owner.Bounds).Contains(pointer);
+            if (menu.Bounds.Contains(pointer) || insideOwner || menu.ContainsFocus && Control.MouseButtons != MouseButtons.None)
+            {
+                outsideSince.Remove(menu);
+                continue;
+            }
+            DateTime since;
+            if (!outsideSince.TryGetValue(menu, out since)) outsideSince[menu] = DateTime.UtcNow;
+            else if ((DateTime.UtcNow - since).TotalMilliseconds >= 250)
+                menu.Close(ToolStripDropDownCloseReason.CloseCalled);
+        }
     }
 
     internal void RefreshTheme()
@@ -46,7 +81,17 @@ sealed class TrayMenuStyle : IDisposable
         menu.BackColor = renderer.Surface;
         menu.ForeColor = renderer.Text;
         foreach (ToolStripItem item in menu.Items)
+        {
             item.ForeColor = renderer.Text;
+            var host = item as ToolStripControlHost;
+            if (host != null)
+            {
+                host.Control.BackColor = renderer.Surface;
+                host.Control.ForeColor = renderer.Text;
+                var slider = host.Control as OpacitySlider;
+                if (slider != null) slider.Dark = renderer.Dark;
+            }
+        }
         menu.Invalidate(true);
     }
 
@@ -56,15 +101,31 @@ sealed class TrayMenuStyle : IDisposable
         {
             menu.Font = font;
             menu.Renderer = renderer;
+            menu.Closing += (s, e) =>
+            {
+                // Setting selection updates in place. Escape and outside clicks
+                // retain the standard ToolStrip dismissal behavior.
+                if (menu.OwnerItem != null && e.CloseReason == ToolStripDropDownCloseReason.ItemClicked)
+                    e.Cancel = true;
+            };
             menu.Opening += (s, e) =>
             {
                 RefreshTheme();
                 Layout(menu);
             };
             menu.SizeChanged += (s, e) => RoundWindow(menu);
+            menu.LocationChanged += (s, e) =>
+            {
+                if (menu.Visible) PositionSubmenu(menu);
+            };
             menu.Opened += (s, e) =>
             {
                 Layout(menu);
+                PositionSubmenu(menu);
+                menu.BeginInvoke(new Action(() =>
+                {
+                    if (!menu.IsDisposed && menu.Visible) PositionSubmenu(menu);
+                }));
                 RoundWindow(menu);
             };
         }
@@ -77,6 +138,28 @@ sealed class TrayMenuStyle : IDisposable
             if (child != null && child.HasDropDownItems)
                 Apply(child.DropDown);
         }
+    }
+
+    static void PositionSubmenu(ToolStripDropDown menu)
+    {
+        var item = menu.OwnerItem;
+        var parent = item == null ? null : item.Owner as ToolStripDropDown;
+        if (parent == null) return;
+        int gap = (int)Math.Round(4 * Scale(parent));
+        var workArea = Screen.FromRectangle(parent.Bounds).WorkingArea;
+        int top = parent.Top + item.Bounds.Top - parent.Padding.Top;
+        var location = SubmenuLocation(parent.Bounds, menu.Size, workArea, top, gap);
+        if (menu.Location != location)
+            SetWindowPos(menu.Handle, IntPtr.Zero, location.X, location.Y, 0, 0, 0x15);
+    }
+
+    internal static Point SubmenuLocation(Rectangle parent, Size child, Rectangle workArea, int top, int gap)
+    {
+        int x = parent.Right + gap;
+        if (x + child.Width > workArea.Right)
+            x = parent.Left - gap - child.Width;
+        int y = Math.Max(workArea.Top, Math.Min(top, workArea.Bottom - child.Height));
+        return new Point(x, y);
     }
 
     static float Scale(ToolStrip menu)
@@ -102,23 +185,42 @@ sealed class TrayMenuStyle : IDisposable
         int inset = (int)Math.Round(4 * scale), width = (int)Math.Round(208 * scale);
         menu.Padding = new Padding(inset);
         menu.Font = font;
+        var root = menu;
+        while (root.OwnerItem != null && root.OwnerItem.Owner is ToolStripDropDown)
+            root = (ToolStripDropDown)root.OwnerItem.Owner;
+        width = MeasureMenuTree(root, scale, width);
+        int height = 2 * inset;
+        foreach (ToolStripItem item in menu.Items)
+        {
+            item.Font = font;
+            item.AutoSize = false;
+            item.Margin = Padding.Empty;
+            bool hosted = item is ToolStripControlHost;
+            // Hosted controls begin after the menu's check column. Reserve that
+            // space rather than allowing the control to widen the popup.
+            int itemWidth = hosted ? width - (int)Math.Round(32 * scale) : width;
+            int itemHeight = (int)Math.Round((item is ToolStripSeparator ? 9 : 28) * scale);
+            item.Size = new Size(itemWidth, itemHeight);
+            if (item.Available) height += itemHeight;
+        }
+        menu.AutoSize = false;
+        menu.Size = new Size(width + 2 * inset, height);
+        RoundWindow(menu);
+    }
+
+    int MeasureMenuTree(ToolStripDropDown menu, float scale, int width)
+    {
         foreach (ToolStripItem item in menu.Items)
         {
             if (!item.Available || item is ToolStripSeparator)
                 continue;
             int measured = TextRenderer.MeasureText(item.Text, font, Size.Empty, TextFormatFlags.SingleLine).Width;
             width = Math.Max(width, measured + (int)Math.Round(60 * scale));
+            var child = item as ToolStripMenuItem;
+            if (child != null && child.HasDropDownItems)
+                width = MeasureMenuTree(child.DropDown, scale, width);
         }
-
-        foreach (ToolStripItem item in menu.Items)
-        {
-            item.Font = font;
-            item.AutoSize = false;
-            item.Margin = Padding.Empty;
-            item.Size = new Size(width, (int)Math.Round((item is ToolStripSeparator ? 9 : 28) * scale));
-        }
-
-        RoundWindow(menu);
+        return width;
     }
 
     static void RoundWindow(ToolStripDropDown menu)
@@ -204,6 +306,19 @@ sealed class TrayMenuStyle : IDisposable
             using (var path = Rounded(new RectangleF(.5f, .5f, e.ToolStrip.Width - 1, e.ToolStrip.Height - 1), 8 * Scale(e.ToolStrip)))
             using (var pen = new Pen(Edge))
                 e.Graphics.DrawPath(pen, path);
+            foreach (ToolStripItem item in e.ToolStrip.Items)
+            {
+                var expandable = item as ToolStripMenuItem;
+                if (expandable == null || !expandable.Available || !expandable.HasDropDownItems) continue;
+                float scale = Scale(e.ToolStrip), x = e.ToolStrip.ClientSize.Width - 16 * scale;
+                float y = item.Bounds.Top + item.Height / 2f;
+                var ink = item.Enabled ? (Dark ? Color.FromArgb(180, 180, 180) : Color.FromArgb(105, 105, 105)) : Disabled;
+                using (var pen = new Pen(ink, 1.2f * scale))
+                {
+                    pen.StartCap = pen.EndCap = LineCap.Round;
+                    e.Graphics.DrawLines(pen, new[] { new PointF(x - 2 * scale, y - 3 * scale), new PointF(x + scale, y), new PointF(x - 2 * scale, y + 3 * scale) });
+                }
+            }
         }
 
         protected override void OnRenderMenuItemBackground(ToolStripItemRenderEventArgs e)
@@ -221,19 +336,16 @@ sealed class TrayMenuStyle : IDisposable
             float scale = Scale(e.ToolStrip);
             int left = (int)Math.Round(28 * scale), right = (int)Math.Round(24 * scale);
             e.TextRectangle = new Rectangle(left, 0, Math.Max(1, e.Item.Width - left - right), e.Item.Height);
-            e.TextFormat = TextFormatFlags.VerticalCenter | TextFormatFlags.Left | TextFormatFlags.SingleLine;
+            var alignment = e.Item.TextAlign == ContentAlignment.MiddleRight ? TextFormatFlags.Right : TextFormatFlags.Left;
+            e.TextFormat = TextFormatFlags.VerticalCenter | alignment | TextFormatFlags.SingleLine;
             e.TextColor = e.Item.Enabled ? Text : Disabled;
             base.OnRenderItemText(e);
         }
 
         protected override void OnRenderArrow(ToolStripArrowRenderEventArgs e)
         {
-            float scale = Scale(e.Item.Owner), x = e.Item.Width - 12 * scale, y = e.Item.Height / 2f;
-            e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
-            using (var pen = new Pen(e.Item.Enabled ? Text : Disabled, 1.2f * scale))
-            {
-                e.Graphics.DrawLines(pen, new[] { new PointF(x - 2 * scale, y - 3 * scale), new PointF(x + 1 * scale, y), new PointF(x - 2 * scale, y + 3 * scale) });
-            }
+            // Draw in popup coordinates in the final border pass, aligned to
+            // the shared popup width rather than ToolStrip's text-sized slot.
         }
 
         protected override void OnRenderItemCheck(ToolStripItemImageRenderEventArgs e)
@@ -258,10 +370,14 @@ sealed class TrayMenuStyle : IDisposable
     public void Dispose()
     {
         themeTimer.Dispose();
+        submenuTimer.Dispose();
+        outsideSince.Clear();
         menus.Clear();
         font.Dispose();
     }
 
     [DllImport("user32.dll")]
     static extern uint GetDpiForWindow(IntPtr window);
+    [DllImport("user32.dll")]
+    static extern bool SetWindowPos(IntPtr window, IntPtr after, int x, int y, int width, int height, uint flags);
 }

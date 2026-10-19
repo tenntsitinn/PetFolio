@@ -97,6 +97,10 @@ System Bubble 是同一视图的第二种显示模式，未注册第二个 featu
 
 如果未来多个独立模块都需要额度数据，再将 `QuotaService` 提升为宿主共用服务；目前由额度功能拥有，停用即可停止查询。
 
+## 多屏跟踪坐标边界
+
+开发工作区使用 `WindowsPetDesktop → PetDesktopSnapshot → PetLogicalDrag → PetDisplayCoordinates`：Windows 物理鼠标输入转换为 DIP，逻辑跟随和选屏后再发布物理 PetState。显示器快照每秒刷新，显示消息及窗口 DPI 变化立即刷新；各屏使用各自 DPI 和原点。持久化位置仍来自 Codex，不写回、不自行恢复宿主位置。保存的 displayBounds 与当前桌面不符时等待宿主更新；不可靠或暂不支持的布局隐藏气泡并提供诊断。气泡绘制仍沿用既有尺寸策略，完整视觉缩放和多屏实测尚待完成。详细范围与模拟验证见 [docs/MULTI_SCREEN.md](docs/MULTI_SCREEN.md)。
+
 ## 当前边界
 
 - 气泡停靠仅保留左右两侧，垂直居中于 PetState 提供的宠物画布；左右间距仍为 12 px。按画布中心选择显示器，以其 WorkingArea 中心 X 判定中线首选方向：画布中心小于工作区中心时选 right，相等或更大时选 left。方向评分移植自已安装 Codex 26.1013.3656 的 `main-C4DYk222.js` 中 `Kp / fle / gle`，将上下候选改为左右候选：四边溢出之和 + 横向溢出 × 面板高度 + 纵向溢出 × 面板宽度 + 非中线首选方向 32 - 延续已有方向 96，取较低分，平分取 left。`PetState.Dragging` 为 true 时先以中线方向替代已有方向再评分；静止时沿用上次有效方向，因此没有额外的跨中线距离或时间门槛。选侧后才按工作区及阴影留白约束位置。手动拖动气泡会更新已有方向及保存偏好，下次拖宠物仍按中线重选。设置保留 `panelCorner` 字段名，值规范为 `left / right`，旧 `top-start / bottom-start` 映射为 left，旧 `top-end / bottom-end` 映射为 right；保存值作为首次布局的已有方向。该布局使用现有 DPI 换算后的坐标与尺寸；来源是桌面安装包，不是公开 harness 仓库。

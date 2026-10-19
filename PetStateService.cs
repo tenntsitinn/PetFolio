@@ -65,11 +65,17 @@ sealed class PetStateService : IPetStateSource, IDisposable
     int pendingMetadata;
     long notifiedSelectionReads, notifiedStateReads;
     readonly Stopwatch watch = Stopwatch.StartNew();
-    readonly PetDragFollower drag = new PetDragFollower();
+    readonly PetLogicalDrag drag = new PetLogicalDrag();
     readonly PetColourSwitch petSwitch = new PetColourSwitch();
     readonly PetPaletteCatalog palettes;
     readonly Func<List<IntPtr>> discoverWindows;
     readonly Func<IntPtr, uint> getWindowDpi;
+    readonly Func<IntPtr, uint, PetDesktopSnapshot> readDesktop;
+    PetDesktopSnapshot desktop;
+    PetDesktopDisplay renderedDisplay;
+    Rectangle? savedDisplayBounds;
+    long nextDisplayRead;
+    string displayError;
     internal long SelectionReads { get; private set; }
     internal long StateReads { get; private set; }
     internal long Publications { get; private set; }
@@ -83,7 +89,7 @@ sealed class PetStateService : IPetStateSource, IDisposable
     string stateError = "missing";
     // Persisted Electron values stay in DIP; all published and mouse values
     // are physical pixels. Always convert from the originals, never cumulatively.
-    Point anchor, savedAnchor, savedAnchorDip, dragStartAnchorDip;
+    Point anchor, savedAnchor, savedAnchorDip;
     uint dpi = 96;
     bool displayRefreshQueued;
     long nextMetadata, nextDiscovery;
@@ -98,13 +104,14 @@ sealed class PetStateService : IPetStateSource, IDisposable
 
     internal event Action<PetTrackingDiagnostic> DiagnosticChanged;
     public PetStateService(string home, string palettePath, Action<Action> dispatch, Func<List<IntPtr>> discoverWindows = null,
-        Func<IntPtr, uint> getWindowDpi = null)
+        Func<IntPtr, uint> getWindowDpi = null, Func<IntPtr, uint, PetDesktopSnapshot> readDesktop = null)
     {
         this.home = home;
         this.dispatch = dispatch;
         palettes = new PetPaletteCatalog(palettePath);
         this.discoverWindows = discoverWindows ?? DiscoverWindows;
         this.getWindowDpi = getWindowDpi ?? Native.GetDpiForWindow;
+        this.readDesktop = readDesktop ?? WindowsPetDesktop.Read;
         Current = PetState.Empty;
         Diagnostic = new PetTrackingDiagnostic
         {
@@ -442,6 +449,7 @@ sealed class PetStateService : IPetStateSource, IDisposable
             if (b != null && b.ContainsKey("x") && b.ContainsKey("y"))
             {
                 savedAnchorDip = new Point(Convert.ToInt32(b["x"]), Convert.ToInt32(b["y"]));
+                savedDisplayBounds = ReadDisplayBounds(b);
                 anchorKnown = true;
             }
 
@@ -506,6 +514,7 @@ sealed class PetStateService : IPetStateSource, IDisposable
             if (!closing)
             {
                 nextMetadata = 0;
+                nextDisplayRead = 0;
                 Tick();
             }
         });
@@ -519,22 +528,83 @@ sealed class PetStateService : IPetStateSource, IDisposable
             nextDpi = dpi;
         if (nextDpi != dpi)
         {
-            Native.POINT cursor;
-            if (!pointer.HasValue && drag.Active)
-            {
-                if (!Native.GetCursorPos(out cursor))
-                    return;
-                pointer = new Point(cursor.X, cursor.Y);
-            }
-
-            drag.ChangeDpi(pointer ?? Point.Empty, dpi, nextDpi, PetDpi.Scale(dragStartAnchorDip, 96, nextDpi));
             Program.Record("pet-dpi", new { previous = dpi, current = nextDpi });
             dpi = nextDpi;
+            nextDisplayRead = 0;
         }
 
-        savedAnchor = PetDpi.Scale(savedAnchorDip, 96, dpi);
-        petSize = PetDpi.Scale(petSizeDip, 96, dpi);
-        anchor = drag.Resolve(savedAnchor, watch.ElapsedMilliseconds);
+        if (watch.ElapsedMilliseconds >= nextDisplayRead)
+        {
+            nextDisplayRead = watch.ElapsedMilliseconds + 1000;
+            try
+            {
+                desktop = readDesktop(target, dpi);
+                if (desktop == null)
+                    throw new InvalidOperationException("Monitor metrics unavailable");
+                if (drag.Display != null)
+                {
+                    var current = desktop.Find(drag.Display.Id);
+                    if (current == null || (!drag.Active && current.Logical.Bounds.Location != drag.Display.Bounds.Location))
+                        drag.Reset(); // Observe the next saved host position; do not relocate Pet.
+                    else
+                        drag.RefreshDisplays(desktop.LogicalDisplays, current.Logical);
+                }
+
+                displayError = null;
+            }
+            catch (Exception ex)
+            {
+                if (!(ex is ArgumentException) && !(ex is InvalidOperationException) &&
+                    !(ex is System.ComponentModel.Win32Exception))
+                    throw;
+                if (displayError != ex.Message)
+                    Program.Record("pet-display-unavailable", new { error = ex.Message });
+                displayError = ex.Message;
+                desktop = null;
+                renderedDisplay = null;
+                drag.Reset();
+                return;
+            }
+        }
+
+        ProjectAnchor();
+    }
+
+    static Rectangle? ReadDisplayBounds(Dictionary<string, object> saved)
+    {
+        object value;
+        if (!saved.TryGetValue("displayBounds", out value))
+            return null;
+        var bounds = value as Dictionary<string, object>;
+        if (bounds == null || !bounds.ContainsKey("x") || !bounds.ContainsKey("y") ||
+            !bounds.ContainsKey("width") || !bounds.ContainsKey("height"))
+            return null;
+        int width = Convert.ToInt32(bounds["width"]), height = Convert.ToInt32(bounds["height"]);
+        return width > 0 && height > 0 ? (Rectangle? )new Rectangle(Convert.ToInt32(bounds["x"]),
+            Convert.ToInt32(bounds["y"]), width, height) : null;
+    }
+
+    void ProjectAnchor()
+    {
+        if (desktop == null)
+            return;
+        var savedDisplay = savedDisplayBounds.HasValue
+            ? desktop.Displays.Find(d => d.Logical.Bounds == savedDisplayBounds.Value) : null;
+        var logical = drag.Resolve(savedAnchorDip, watch.ElapsedMilliseconds);
+        if (savedDisplayBounds.HasValue && savedDisplay == null && !drag.HasPosition)
+        {
+            // A saved layout from before hotplug/metrics changes is not a live
+            // host position. Wait for Codex, rather than restore it ourselves.
+            renderedDisplay = null;
+            return;
+        }
+
+        savedDisplay = savedDisplay ?? desktop.Nearest(savedAnchorDip, false);
+        savedAnchor = savedDisplay.Coordinates.ToPhysical(savedAnchorDip);
+        renderedDisplay = drag.HasPosition && drag.Display != null ? desktop.Find(drag.Display.Id) : savedDisplay;
+        renderedDisplay = renderedDisplay ?? savedDisplay;
+        anchor = renderedDisplay.Coordinates.ToPhysical(logical);
+        petSize = renderedDisplay.Coordinates.ToPhysicalLength(petSizeDip);
     }
 
     void Tick()
@@ -562,6 +632,7 @@ sealed class PetStateService : IPetStateSource, IDisposable
             {
                 drag.Reset();
                 target = found;
+                nextDisplayRead = 0;
                 Program.Record("target", new { hwnd = target.ToInt64(), candidates = candidates.Count });
             }
         }
@@ -569,7 +640,7 @@ sealed class PetStateService : IPetStateSource, IDisposable
         // Poll the foreign window as well as responding to our own DPI messages.
         // Its notification may arrive later, or while our bubble is hidden.
         UpdatePhysicalCoordinates();
-        bool visible = anchorKnown && petOpen && target != IntPtr.Zero && Native.IsWindowVisible(target) && !Native.IsIconic(target);
+        bool visible = renderedDisplay != null && desktop != null && anchorKnown && petOpen && target != IntPtr.Zero && Native.IsWindowVisible(target) && !Native.IsIconic(target);
         if (!visible)
         {
             drag.Reset();
@@ -594,7 +665,7 @@ sealed class PetStateService : IPetStateSource, IDisposable
             }
         }
 
-        anchor = drag.Resolve(savedAnchor, watch.ElapsedMilliseconds);
+        ProjectAnchor();
         if (dragStarted)
         {
             dragStarted = false;
@@ -616,6 +687,13 @@ sealed class PetStateService : IPetStateSource, IDisposable
     {
         bool windowVisible = target != IntPtr.Zero && Native.IsWindowVisible(target) && !Native.IsIconic(target);
         var next = PetTrackingDiagnostic.Create(stateError, anchorKnown, petOpen, candidateCount, windowVisible);
+        if (next.Reason == "ready" && displayError != null)
+        {
+            next.Reason = "display-unavailable";
+            next.StateError = displayError;
+        }
+        else if (next.Reason == "ready" && desktop != null && renderedDisplay == null)
+            next.Reason = "display-position-unavailable";
         if (next.SameAs(Diagnostic))
             return;
         Diagnostic = next;
@@ -664,7 +742,7 @@ sealed class PetStateService : IPetStateSource, IDisposable
         {
             if ((Native.GetAsyncKeyState(17) & 0x8000) != 0)
                 return;
-            if (!anchorKnown || !petOpen || target == IntPtr.Zero || !Native.IsWindowVisible(target))
+            if (desktop == null || renderedDisplay == null || !anchorKnown || !petOpen || target == IntPtr.Zero || !Native.IsWindowVisible(target))
                 return;
             var pet = new Rectangle(anchor.X, anchor.Y, petSize, (int)Math.Ceiling(petSize * 208.0 / 192));
             if (!pet.Contains(pointer))
@@ -676,10 +754,7 @@ sealed class PetStateService : IPetStateSource, IDisposable
             };
             if (Native.GetAncestor(Native.WindowFromPoint(p), 2) != target)
                 return;
-            drag.Begin(pointer, anchor, savedAnchor);
-            dragStartAnchorDip = savedAnchorDip;
-            dragStarted = true;
-            follow.Interval = 16;
+            BeginObservedDrag(pointer);
         }
         else if (drag.Active)
         {
@@ -691,11 +766,20 @@ sealed class PetStateService : IPetStateSource, IDisposable
 
     void MoveDrag(Point pointer)
     {
-        var screen = Screen.FromPoint(pointer);
-        // Native pet layout uses the work area's top/left and the display's bottom,
-        // reserving 8 DIP below the mascot plus the 32 DIP pet control row.
-        var area = Rectangle.FromLTRB(screen.WorkingArea.Left, screen.WorkingArea.Top,
-            screen.WorkingArea.Right, screen.Bounds.Bottom);
-        drag.Move(pointer, area, petSize, PetDpi.Scale(40, 96, dpi));
+        if (desktop == null)
+            return;
+        var physicalDisplay = desktop.Nearest(pointer, true);
+        var logicalPointer = physicalDisplay.Coordinates.PointerToLogical(pointer);
+        var nearest = desktop.Nearest(logicalPointer, false);
+        drag.Move(logicalPointer, nearest.Logical, petSizeDip);
+    }
+
+    void BeginObservedDrag(Point pointer)
+    {
+        var pointerDisplay = desktop.Nearest(pointer, true);
+        drag.Begin(pointerDisplay.Coordinates.PointerToLogical(pointer),
+            renderedDisplay.Coordinates.ToLogical(anchor), savedAnchorDip, pointerDisplay.Logical);
+        dragStarted = true;
+        follow.Interval = 16;
     }
 }

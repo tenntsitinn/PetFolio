@@ -35,7 +35,7 @@ sealed class BubbleSettingsStore
                 throw new ArgumentException("Invalid bubble settings");
             object value;
             if (values.TryGetValue("opacityPercent", out value) && value is int)
-                settings.OpacityPercent = Math.Max(10, Math.Min(100, (int)value));
+                settings.OpacityPercent = Math.Max(0, Math.Min(100, (int)value));
             if (values.TryGetValue("panelCorner", out value))
                 settings.PanelCorner = PetPanelPlacement.Normalize(value as string);
             if (values.TryGetValue("bubbleMode", out value))

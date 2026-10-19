@@ -33,13 +33,13 @@ class ThemeTests
         }
 
         Color translucentDark = Color.FromArgb(51, 35, 30, 48);
-        for (int percent = 10; percent <= 100; percent += 10)
+        for (int percent = 0; percent <= 100; percent++)
         {
             int alpha = (int)Math.Round(255 * percent / 100.0);
-            Require((PetTheme.Text(Color.FromArgb(alpha, 35, 30, 48), Color.White).ToArgb() == Color.Black.ToArgb()) == (percent == 10 || percent == 20), "Dark tint switches to black only at 10% and 20%: " + percent);
+            Require((PetTheme.Text(Color.FromArgb(alpha, 35, 30, 48), Color.White).ToArgb() == Color.Black.ToArgb()) == (percent <= 20), "Dark tint adapts through 20% inclusive: " + percent);
             Require(PetTheme.Text(Color.FromArgb(alpha, 35, 30, 48), Color.Black).ToArgb() == Color.White.ToArgb(), "Dark desktop retains white text: " + percent);
             Require(PetTheme.Text(Color.FromArgb(alpha, 240, 220, 100), Color.White).ToArgb() == PetTheme.Text(Color.FromArgb(alpha, 240, 220, 100)).ToArgb(), "Light tint keeps existing text: " + percent);
-            Require((PetTheme.Text(Color.FromArgb(alpha, 240, 220, 100), Color.Black).ToArgb() == Color.White.ToArgb()) == (percent == 10 || percent == 20), "Light tint switches to white on dark desktop only at 10% and 20%: " + percent);
+            Require((PetTheme.Text(Color.FromArgb(alpha, 240, 220, 100), Color.Black).ToArgb() == Color.White.ToArgb()) == (percent <= 20), "Light tint adapts through 20% inclusive: " + percent);
             Require(PetTheme.Secondary(Color.FromArgb(alpha, 240, 220, 100), Color.Black).A == 204, "Light tint secondary ink retains .8 alpha: " + percent);
         }
 

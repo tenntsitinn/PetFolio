@@ -52,13 +52,14 @@ static class BubbleSettingsTests
             Check(settings.OpacityPercent == 100 && settings.PanelCorner == "right" && settings.QuotaEnabled && !settings.SystemEnabled && !settings.DefaultAppearance, "Invalid field types fall back independently and opacity is clamped");
             File.WriteAllText(path, "{");
             settings = store.Load();
-            Check(settings.QuotaEnabled && settings.SystemEnabled && errors == 1, "Malformed settings fall back and report a diagnostic");
+            Check(settings.QuotaEnabled && settings.SystemEnabled && errors == 1,
+                "Malformed settings fall back and report a diagnostic (errors=" + errors + ", last=" + lastError + ")");
             File.WriteAllText(path, "null");
             settings = store.Load();
             Check(settings.DefaultAppearance && errors == 2, "Null settings fall back safely");
             settings = new BubbleSettings
             {
-                OpacityPercent = 10,
+                OpacityPercent = 0,
                 PanelCorner = "bottom-end",
                 SystemMode = true,
                 QuotaEnabled = false,
@@ -69,7 +70,7 @@ static class BubbleSettingsTests
             };
             store.Save(settings);
             var restored = store.Load();
-            Check(restored.OpacityPercent == 10 && restored.PanelCorner == "right" && restored.SystemMode && !restored.QuotaEnabled && restored.SystemEnabled,
+            Check(restored.OpacityPercent == 0 && restored.PanelCorner == "right" && restored.SystemMode && !restored.QuotaEnabled && restored.SystemEnabled,
                 "Mode, switches and placement round-trip: " + File.ReadAllText(path) + " (errors=" + errors + ", last=" + lastError + ")");
             Check(!restored.DefaultAppearance && restored.DefaultFrostedGlass && !restored.PetFrostedGlass, "Independent appearance choices round-trip");
             settings.OpacityPercent = 30;

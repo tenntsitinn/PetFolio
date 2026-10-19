@@ -33,6 +33,10 @@ sealed class PetTrackingDiagnostic
                 return "Multiple matching windows were found. Close extra pet windows; binding requires a unique match.";
             case "window-hidden":
                 return "The matching pet window is hidden or minimized. Restore it in Codex.";
+            case "display-unavailable":
+                return "Display coordinates are unavailable or this monitor layout is not supported. The bubble is hidden until a valid layout is available.";
+            case "display-position-unavailable":
+                return "The saved Pet display does not match the current desktop. Waiting for Codex to publish its position.";
             default:
                 return "Pet discovery has not started.";
         }
