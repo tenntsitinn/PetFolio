@@ -47,7 +47,7 @@ static class TraySubmenuTests
             appearance.ShowDropDown();
             Application.DoEvents();
             var submenu = appearance.DropDown;
-            Check(submenu.Top == root.Top && submenu.Left > root.Right, "Appearance aligns to the root top without overlap: " + root.Bounds + " / " + submenu.Bounds);
+            Check(submenu.Top == root.Top && submenu.Left == root.Right, "Appearance touches the root edge without overlap: " + root.Bounds + " / " + submenu.Bounds);
             Check(root.Width == submenu.Width, "Root and appearance menus share the same width");
             Check(submenu.Items[6].Bounds.Right <= submenu.ClientSize.Width, "Compact slider fits inside the submenu");
             var pet = (ToolStripMenuItem)submenu.Items[1];
@@ -87,13 +87,13 @@ static class TraySubmenuTests
             features.ShowDropDown();
             Application.DoEvents();
             Check(features.DropDown.Top == root.Top + features.Bounds.Top - root.Padding.Top &&
-                features.DropDown.Left > root.Right, "Features aligns to its group and stays outside the root");
+                features.DropDown.Left == root.Right, "Features aligns to its group and touches the root edge");
             var leftPlacement = TrayMenuStyle.SubmenuLocation(new Rectangle(800, 100, 200, 300),
-                new Size(200, 240), new Rectangle(0, 0, 1024, 768), 100, 4);
-            Check(leftPlacement == new Point(596, 100), "Right screen edge opens left without overlap");
+                new Size(200, 240), new Rectangle(0, 0, 1024, 768), 100);
+            Check(leftPlacement == new Point(600, 100), "Left-opening submenu touches the parent without overlap");
             var bottomPlacement = TrayMenuStyle.SubmenuLocation(new Rectangle(100, 600, 200, 160),
-                new Size(200, 240), new Rectangle(0, 0, 1024, 768), 700, 4);
-            Check(bottomPlacement == new Point(304, 528), "Bottom edge keeps submenu inside the work area");
+                new Size(200, 240), new Rectangle(0, 0, 1024, 768), 700);
+            Check(bottomPlacement == new Point(300, 528), "Bottom edge keeps submenu inside the work area without a horizontal gap");
             root.Items.Remove(appearance);
         }
         Console.WriteLine("15 submenu interaction checks passed");

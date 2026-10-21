@@ -32,6 +32,8 @@ sealed class BubbleContentState
 
     internal BubbleContentState Enable(bool quota, bool system)
     {
+        if ((!quota && !system) || (quota == QuotaEnabled && system == SystemEnabled))
+            return this;
         return new BubbleContentState(SystemMode, quota, system);
     }
 

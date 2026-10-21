@@ -118,6 +118,42 @@ static class PetPanelTests
         Check(movedAbsolute.X - oldAbsolute.X == 150 && movedAbsolute.Y - oldAbsolute.Y == 30, "offset animation follows mascot immediately");
         spring.Cancel();
         Check(spring.Step(goal, 32) == goal, "new drag cancels previous snap");
+        Check(spring.Track(new Point(124, 23), 40) == new Point(124, 23) && !spring.Active,
+            "first layout appears immediately without animating from a stale screen");
+        Check(spring.Track(new Point(124, 23), 56) == new Point(124, 23) && !spring.Active,
+            "unchanged offset follows pet without lag or a running spring");
+        var edgeGoal = new Point(80, 23);
+        Check(spring.Track(edgeGoal, 72) == new Point(124, 23) && spring.Active,
+            "edge constraint starts from current relative position");
+        var squeezed = spring.Track(edgeGoal, 88);
+        Check(squeezed.X < 124 && squeezed.X > 80 && squeezed.Y == 23,
+            "edge pressure changes position without changing vertical alignment");
+        Check(spring.Track(new Point(124, 23), 88) == squeezed,
+            "crossing back at the same instant preserves position");
+        bool overshot = false;
+        for (int now = 104; now <= 2000; now += 16)
+        {
+            at = spring.Track(new Point(124, 23), now);
+            overshot |= at.X > 124;
+        }
+        Check(overshot, "release from edge has a damped rebound");
+        Check(!spring.Active && at == new Point(124, 23), "edge rebound settles exactly");
+
+        // Cross from a right-edge left dock to the next screen's left-edge right dock.
+        spring.Cancel();
+        spring.Track(new Point(-220, 23), 0);
+        spring.Track(new Point(124, 23), 16);
+        var firstCrossing = spring.Track(new Point(124, 23), 32);
+        Check(firstCrossing.X > -220 && firstCrossing.X < 124, "cross-screen side change is animated");
+        var nextScreen = new Rectangle(1920, 0, 1920, 1040);
+        var bounded = PetPanelPlacement.Constrain(new Point(1920 + firstCrossing.X, 423), panel, nextScreen, 24);
+        Check(bounded.X == 1944, "new screen edge holds the bubble while its spring catches up");
+        for (int now = 48; now <= 2000; now += 16)
+            at = spring.Track(new Point(124, 23), now);
+        Check(at == new Point(124, 23) && !spring.Active, "cross-screen spring releases and settles");
+        spring.Cancel();
+        Check(spring.Track(new Point(-220, 40), 2016) == new Point(-220, 40) && !spring.Active,
+            "hide or target change discards old motion");
         Console.WriteLine("Passed " + passed + " relative placement checks.");
     }
 }

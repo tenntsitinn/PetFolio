@@ -74,7 +74,13 @@ static class PetTrackingTests
                 callbacks.Enqueue(a);
             },
                 () => candidates == 0 ? new List<IntPtr>() : candidates == 1 ? new List<IntPtr> { target.Handle } : new List<IntPtr> { target.Handle, target.Handle },
-                hwnd => fixtureDpi))
+                hwnd => fixtureDpi,
+                // This suite exercises single-screen window-DPI behavior. Do not
+                // let the developer's attached monitors override the fixture DPI.
+                (hwnd, dpi) => new PetDesktopSnapshot(new[] {
+                    new PetMonitor("fixture", new Rectangle(0, 0, 1920, 1080),
+                        new Rectangle(0, 0, 1920, 1040), dpi, true)
+                })))
             {
                 target.ShowInTaskbar = false;
                 target.Bounds = new Rectangle(600, 400, 112, 122);

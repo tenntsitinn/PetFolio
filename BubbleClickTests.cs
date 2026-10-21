@@ -328,11 +328,11 @@ static class BubbleClickTests
             FlushClick();
             Check(view.SystemMode && source.Calls == callsBeforeSystemRefresh, "Double-click cannot enter a disabled quota mode");
             systemOption.PerformClick();
-            Check(!view.Visible && !systemTimer.Enabled && !view.ShowBubbleCommand.Enabled && !refresh.Enabled, "Both disabled hide the bubble, stop sampling and disable actions");
+            Check(view.Visible && systemTimer.Enabled && systemOption.Checked && refresh.Enabled, "Last System option remains checked and running");
             feature.Restore();
-            Check(!view.Visible && !view.AnyModeEnabled, "Restore respects disabled features");
+            Check(view.Visible && view.AnyModeEnabled, "Restore retains the remaining feature");
             using (var restored = LoadSavedView())
-                Check(!restored.QuotaEnabled && !restored.SystemEnabled, "Both disabled flags survive a new instance");
+                Check(!restored.QuotaEnabled && restored.SystemEnabled, "Rejected toggle preserves settings after restart");
             systemOption.PerformClick();
             Check(view.Visible && view.SystemMode && systemTimer.Enabled && refresh.Enabled, "Re-enabling System restores the retained visible bubble and sampling");
             quotaOption.PerformClick();
@@ -341,6 +341,10 @@ static class BubbleClickTests
             drain();
             systemOption.PerformClick();
             Check(!view.SystemMode && !systemTimer.Enabled, "Disabling active System falls back to Quota and stops sampling");
+            int callsBeforeRejectedToggle = source.Calls;
+            quotaOption.PerformClick();
+            Check(view.QuotaEnabled && !view.SystemEnabled && quotaOption.Checked && !view.SystemMode && source.Calls == callsBeforeRejectedToggle,
+                "Last Quota option remains checked without restarting quota polling");
             view.SetMode(true);
             Check(!view.SystemMode, "Disabled System cannot be selected programmatically");
             systemOption.PerformClick();
@@ -433,13 +437,30 @@ static class BubbleClickTests
             int centerY = area.Top + area.Height / 2 - 61;
             Action<int, bool> movePet = (x, dragging) => view.UpdatePet(new PetState(new IntPtr(1),
                 new Point(x, centerY), 112, true, true, dragging, "new-pet", Color.CornflowerBlue));
+            Action settleLayout = () =>
+            {
+                var deadline = DateTime.UtcNow.AddSeconds(3);
+                while (spring.Active && DateTime.UtcNow < deadline)
+                {
+                    Application.DoEvents();
+                    Thread.Sleep(10);
+                }
+                Check(!spring.Active, "Layout spring settles through the real UI timer");
+            };
             movePet(centerX - 1, true);
+            settleLayout();
             Check(view.Left == centerX - 1 + 112 + 12, "Pet drag left of work-area center places the real bubble on the right");
+            var rigidSize = view.Size;
             movePet(centerX, true);
-            Check(view.Right == centerX - 12, "Pet drag across center immediately places the real bubble on the left");
+            Check(spring.Active && view.Right != centerX - 12 && interactionTimer.Interval == 16,
+                "Pet drag across center starts a position spring instead of jumping");
+            settleLayout();
+            Check(view.Right == centerX - 12 && view.Size == rigidSize, "Spring settles on the left without resizing the bubble");
             movePet(centerX - 1, false);
             Check(view.Right == centerX - 1 - 12, "Idle snapshot retains the real bubble side across center");
             movePet(centerX - 1, true);
+            Check(spring.Active, "Reverse pet drag animates the direction change");
+            settleLayout();
             Check(view.Left == centerX - 1 + 112 + 12, "Reverse pet drag resets the real bubble direction");
             Check(view.Top == centerY + (122 - view.Height) / 2, "Side switching preserves canvas vertical centering");
         }

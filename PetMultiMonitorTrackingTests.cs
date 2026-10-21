@@ -63,6 +63,7 @@ static class PetMultiMonitorTrackingTests
         var snapshot = new PetDesktopSnapshot(new[] { primary, right });
         int reads = 0, writes = 0;
         bool failRead = false;
+        var callbacks = new Queue<Action>();
         var json = new JavaScriptSerializer();
         Action<int, int, Rectangle?> write = (x, y, display) =>
         {
@@ -94,6 +95,7 @@ static class PetMultiMonitorTrackingTests
             using (var target = new Form())
             using (var service = new PetStateService(root, Path.Combine(root, "palettes.json"), a =>
             {
+                callbacks.Enqueue(a);
             },
                 () => new List<IntPtr> { target.Handle }, hwnd => 96,
                 (hwnd, dpi) =>
@@ -115,6 +117,9 @@ static class PetMultiMonitorTrackingTests
                 for (int i = 0; i < 20; i++)
                     Invoke(service, "UpdatePhysicalCoordinates", new object[] { null });
                 Check(reads == firstReads, "Mouse/follow updates reuse the monitor snapshot");
+                long remaining = (long)Field(service, "nextDisplayRead") -
+                    ((System.Diagnostics.Stopwatch)Field(service, "watch")).ElapsedMilliseconds;
+                Check(remaining > 25000 && remaining <= 30000, "Healthy topology uses a 30-second safety poll");
                 write(1700, 300, snapshot.Find("main").Logical.Bounds);
                 Invoke(service, "ReadAnchor");
                 Publish(service);
@@ -175,6 +180,24 @@ static class PetMultiMonitorTrackingTests
                 Invoke(service, "ReadAnchor");
                 Invoke(service, "Tick");
                 Check(service.Current.Visible && service.Current.Anchor == new Point(500, 300), "Host-published location resumes following after unplug");
+                snapshot = new PetDesktopSnapshot(new[] { primary }, PetDisplayMode.Duplicate);
+                while (callbacks.Count > 0)
+                    callbacks.Dequeue()();
+                int beforeModeChange = reads;
+                service.RefreshDisplayMetrics();
+                service.RefreshDisplayMetrics();
+                while (callbacks.Count > 0)
+                    callbacks.Dequeue()();
+                Check(reads == beforeModeChange + 1 && ((PetDesktopSnapshot)Field(service, "desktop")).Mode == PetDisplayMode.Duplicate,
+                    "Display notifications coalesce and refresh duplicate mode without waiting for safety poll");
+                Check(service.Current.Visible && service.Current.Anchor == new Point(500, 300),
+                    "Switching single to duplicate keeps the same desktop position");
+                snapshot = new PetDesktopSnapshot(new[] { primary, right });
+                service.RefreshDisplayMetrics();
+                while (callbacks.Count > 0)
+                    callbacks.Dequeue()();
+                Check(service.Current.Visible && ((PetDesktopSnapshot)Field(service, "desktop")).Mode == PetDisplayMode.Extended,
+                    "Switching duplicate to extended immediately restores multi-screen routing");
             }
         }
         finally

@@ -95,7 +95,7 @@ static class BubbleSettingsTests
             state = state.Select(false);
             Check(!state.SystemMode, "An enabled mode can be selected");
             state = state.Enable(false, false);
-            Check(!state.AnyEnabled && !state.SystemMode, "Both disabled retain selection with no enabled content");
+            Check(state.QuotaEnabled && state.SystemEnabled && !state.SystemMode, "Disabling all content is rejected");
             state = state.Enable(false, true);
             Check(state.SystemMode && state.AnyEnabled, "Re-enabling content selects the available mode");
             state.CopyTo(settings);

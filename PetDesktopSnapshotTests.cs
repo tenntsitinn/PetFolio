@@ -81,6 +81,35 @@ static class PetDesktopSnapshotTests
         }
 
         Check(rejected, "Disconnected topology is explicit, not guessed");
+        Check(PetDisplayRouting.Classify(new string[0]) == PetDisplayMode.Unknown, "No paths is not mistaken for single-screen");
+        Check(PetDisplayRouting.Classify(new[] { "a:0" }) == PetDisplayMode.Single, "Only one active output uses single-screen routing");
+        Check(PetDisplayRouting.Classify(new[] { "a:0", "a:0" }) == PetDisplayMode.Duplicate, "Two outputs sharing a source are clones");
+        Check(PetDisplayRouting.Classify(new[] { "a:0", "a:1" }) == PetDisplayMode.Extended, "Distinct sources use extended routing");
+        Check(PetDisplayRouting.Classify(new[] { "a:0", "b:0" }) == PetDisplayMode.Extended, "Source IDs are scoped by adapter");
+        Check(PetDisplayRouting.Classify(new[] { "a:0", "a:0", "a:1" }) == PetDisplayMode.Mixed, "Clone plus extension has mixed routing");
+        var clone = Monitor("clone", primary.Pixels, 96);
+        desktop = new PetDesktopSnapshot(new[] { clone, primary }, PetDisplayMode.Duplicate);
+        Check(desktop.Displays.Count == 1 && desktop.Displays[0].Monitor.Id == "main", "Clone rectangles collapse to the primary desktop");
+        Check(desktop.Mode == PetDisplayMode.Duplicate && desktop.Nearest(new Point(700, 300), false).Coordinates.ToPhysical(new Point(700, 300)) == new Point(700, 300),
+            "Duplicate mode keeps one unshifted coordinate space");
+        desktop = new PetDesktopSnapshot(new[] { primary }, PetDisplayMode.Duplicate);
+        Check(desktop.Displays.Count == 1 && desktop.Mode == PetDisplayMode.Duplicate, "Windows can expose clone outputs as one monitor");
+        desktop = new PetDesktopSnapshot(new[] { primary, clone, right }, PetDisplayMode.Mixed);
+        Check(desktop.Displays.Count == 2 && desktop.Find("right").Logical.Bounds.Left == 1920, "Mixed mode deduplicates clones without losing extension");
+        foreach (var invalid in new[] {
+            Monitor("different-dpi", primary.Pixels, 144),
+            new PetMonitor("different-work", primary.Pixels, new Rectangle(0, 0, 1920, 1000), 96, false)
+        })
+        {
+            rejected = false;
+            try { new PetDesktopSnapshot(new[] { primary, invalid }, PetDisplayMode.Duplicate); }
+            catch (ArgumentException) { rejected = true; }
+            Check(rejected, "Conflicting clone metrics remain explicit: " + invalid.Id);
+        }
+        rejected = false;
+        try { new PetDesktopSnapshot(new[] { primary, clone }); }
+        catch (ArgumentException) { rejected = true; }
+        Check(rejected, "Unverified overlap is not assumed to be cloning");
         Console.WriteLine(checks + " desktop snapshot checks passed");
     }
 }

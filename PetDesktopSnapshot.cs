@@ -2,6 +2,50 @@
 using System.Collections.Generic;
 using System.Drawing;
 
+enum PetDisplayMode
+{
+    Unknown,
+    Single,
+    Duplicate,
+    Extended,
+    Mixed
+}
+
+static class PetDisplayRouting
+{
+    // One active source can feed several physical outputs in clone mode.
+    internal static PetDisplayMode Classify(IList<string> activeSources)
+    {
+        if (activeSources == null || activeSources.Count == 0)
+            return PetDisplayMode.Unknown;
+        int sources = new HashSet<string>(activeSources).Count;
+        if (sources == 1)
+            return activeSources.Count == 1 ? PetDisplayMode.Single : PetDisplayMode.Duplicate;
+        return sources == activeSources.Count ? PetDisplayMode.Extended : PetDisplayMode.Mixed;
+    }
+
+    internal static List<PetMonitor> Normalize(IList<PetMonitor> monitors, PetDisplayMode mode)
+    {
+        var result = new List<PetMonitor>();
+        foreach (var monitor in monitors)
+        {
+            var existing = result.Find(m => m.Pixels == monitor.Pixels);
+            if (existing == null)
+            {
+                result.Add(monitor);
+                continue;
+            }
+            if ((mode != PetDisplayMode.Duplicate && mode != PetDisplayMode.Mixed) ||
+                existing.Dpi != monitor.Dpi || existing.WorkPixels != monitor.WorkPixels)
+                throw new ArgumentException("Ambiguous mirrored desktop metrics");
+            // Keep the primary representative even if the clone was enumerated first.
+            if (monitor.Primary && !existing.Primary)
+                result[result.IndexOf(existing)] = monitor;
+        }
+        return result;
+    }
+}
+
 sealed class PetMonitor
 {
     internal readonly string Id;
@@ -45,11 +89,16 @@ sealed class PetDesktopSnapshot
 {
     internal readonly List<PetDesktopDisplay> Displays;
     internal readonly List<PetLogicalDisplay> LogicalDisplays;
-    internal PetDesktopSnapshot(IList<PetMonitor> monitors)
+    internal readonly PetDisplayMode Mode;
+    internal PetDesktopSnapshot(IList<PetMonitor> monitors, PetDisplayMode mode = PetDisplayMode.Unknown)
     {
         if (monitors == null || monitors.Count == 0)
             throw new ArgumentException("No displays");
-        var remaining = new List<PetMonitor>(monitors);
+        var remaining = PetDisplayRouting.Normalize(monitors, mode);
+        Mode = mode == PetDisplayMode.Unknown
+            ? (remaining.Count == 1 ? PetDisplayMode.Single : PetDisplayMode.Extended) : mode;
+        if ((Mode == PetDisplayMode.Single || Mode == PetDisplayMode.Duplicate) && remaining.Count != 1)
+            throw new ArgumentException("Display mode and desktop geometry disagree");
         var primary = remaining.Find(m => m.Primary);
         if (primary == null)
             throw new ArgumentException("No primary display");
@@ -76,7 +125,7 @@ sealed class PetDesktopSnapshot
             }
         }
 
-        // Disconnected/mirrored or overlapping topologies require a verified
+        // Disconnected or overlapping topologies require a verified
         // platform mapping. Do not silently fall back to global DPI scaling.
         if (remaining.Count != 0)
             throw new ArgumentException("Unsupported disconnected or mirrored desktop");

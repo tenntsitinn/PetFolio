@@ -116,6 +116,7 @@ sealed class PetPanelSpring
 {
     double x, y, vx, vy;
     long last;
+    bool initialized;
     internal bool Active { get; private set; }
 
     internal void Begin(Point offset, long now)
@@ -124,12 +125,36 @@ sealed class PetPanelSpring
         y = offset.Y;
         vx = vy = 0;
         last = now;
+        initialized = true;
         Active = true;
     }
 
     internal void Cancel()
     {
         Active = false;
+        initialized = false;
+    }
+
+    // Only animate the layout offset: pointer motion itself must remain immediate.
+    // Keep velocity when an edge or a new display changes the destination mid-flight.
+    internal Point Track(Point target, long now)
+    {
+        if (!initialized)
+        {
+            x = target.X;
+            y = target.Y;
+            vx = vy = 0;
+            initialized = true;
+            last = now;
+            return target;
+        }
+
+        if (!Active && (x != target.X || y != target.Y))
+        {
+            Active = true;
+            last = now;
+        }
+        return Step(target, now);
     }
 
     internal Point Step(Point target, long now)

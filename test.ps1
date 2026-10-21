@@ -10,6 +10,7 @@ $originalDataDirectory = $env:PETFOLIO_DATA_DIR
 $localDataDirectory = if ($originalDataDirectory) { $originalDataDirectory } else { Join-Path ([Environment]::GetFolderPath('LocalApplicationData')) 'PetFolio' }
 $env:PETFOLIO_DATA_DIR = Join-Path $testRoot 'runtime-data'
 $suites = @(
+    @{ Name = 'WindowsDisplayModeTests'; Sources = @('WindowsDisplayModeTests.cs', 'WindowsPetDesktop.cs', 'PetDesktopSnapshot.cs', 'PetLogicalDesktop.cs', 'PetDisplayCoordinates.cs', 'PetDragFollower.cs') },
     @{ Name = 'PetDesktopSnapshotTests'; Sources = @('PetDesktopSnapshotTests.cs', 'PetDesktopSnapshot.cs', 'PetLogicalDesktop.cs', 'PetDisplayCoordinates.cs', 'PetDragFollower.cs') },
     @{ Name = 'PetLogicalDesktopTests'; Sources = @('PetLogicalDesktopTests.cs', 'PetLogicalDesktop.cs', 'PetDisplayCoordinates.cs', 'PetDragFollower.cs') },
     @{ Name = 'PetDisplayCoordinatesTests'; Sources = @('PetDisplayCoordinatesTests.cs', 'PetDisplayCoordinates.cs', 'PetDragFollower.cs') },
@@ -51,7 +52,7 @@ try {
         if ($LASTEXITCODE -ne 0) { throw ($result -join [Environment]::NewLine) }
         Write-Output ('{0}: {1}' -f $suite.Name, $result[-1])
     }
-    foreach ($suiteName in @('FeatureLifecycleTests', 'PetTrackingTests', 'PetMultiMonitorTrackingTests', 'BubbleClickTests', 'BubbleThemeTests', 'TraySubmenuTests', 'TrayOverlapTests', 'BubbleZOrderTests', 'BubbleMaterialTests')) {
+    foreach ($suiteName in @('FeatureLifecycleTests', 'PetTrackingTests', 'PetMultiMonitorTrackingTests', 'WeeklyQuotaTests', 'BubbleClickTests', 'BubbleThemeTests', 'TraySubmenuTests', 'TrayOverlapTests', 'BubbleZOrderTests', 'BubbleMaterialTests')) {
         $lifecycleExecutable = Join-Path $testRoot ($suiteName + '.exe')
         $generated += $lifecycleExecutable
         & (Join-Path $projectRoot 'build.ps1') -OutputDirectory $testRoot -OutputName ($suiteName + '.exe') -EntryPoint $suiteName -Target 'exe' -AdditionalSources ($suiteName + '.cs')

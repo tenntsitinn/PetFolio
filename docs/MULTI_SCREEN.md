@@ -19,7 +19,7 @@ PETFOLIO_MULTIMONITOR_HANDOFF.md 补充的范围已采纳：PetFolio 只跟随 P
 5. 鼠标物理输入先按所在屏幕转换为 DIP（指针向下取整），进入 `PetLogicalDrag`。抓取偏移、边界约束及 24 DIP 选屏缓冲均在逻辑空间处理。
 6. 最后通过 `物理原点 + round((逻辑位置 - 逻辑原点) × DPI / 96)` 发布 PetState；尺寸单独转换。QuotaLabel 继续消费物理坐标，其已有左右停靠行为不变。
 
-显示器快照缓存一秒；显示变化通知、窗口 DPI 变化和目标窗口变化立即刷新。读屏失败也限速重试，不在 16 ms 跟随循环中反复枚举。失败时清除不可靠映射并隐藏气泡，诊断为 display-unavailable。
+显示器快照现以 30 秒为兜底刷新周期；显示变化通知、工作区变化、窗口 DPI 变化和目标窗口变化立即刷新。读屏失败每秒限速重试，不在 16 ms 跟随循环中反复枚举。失败时清除不可靠映射并隐藏气泡，诊断为 display-unavailable。2026-10-20 新增当前启用输出路径判别与单屏／复制／扩展／混合模式路由，见 [显示模式路由](DISPLAY_MODES.md)。
 
 现有松手后最多 2000 ms 等待宿主保存的机制保留，只是其位置改为 DIP。不会增加一套持久化位置；不再使用旧 ChangeDpi 全局像素缩放。显示器移除或等待落盘期间逻辑原点发生变化时，取消过时预测，等待宿主记录。
 
@@ -29,7 +29,7 @@ PETFOLIO_MULTIMONITOR_HANDOFF.md 补充的范围已采纳：PetFolio 只跟随 P
 
 平台原点和相邻边偏移参考 Chromium [screen_win.cc](https://chromium.googlesource.com/chromium/src/+/master/ui/display/win/screen_win.cc) 与 [scaling_util.cc](https://github.com/chromium/chromium/blob/main/ui/display/win/scaling_util.cc)。本轮实现了相邻屏幕树的核心规则，**不声称与所有 Electron/Chromium 版本完全等价**。尚未复刻复杂布局的重叠消解，也未核定当前宿主 Chromium 的精确版本及特性开关。
 
-断开的屏幕布局、重复镜像矩形、生成重叠逻辑矩形的复杂布局目前明确拒绝映射。气泡会隐藏并给出诊断；不将这些场景描述为已支持。未来是否扩展须依据实际需求与宿主证据。
+断开的屏幕布局、未经输出路径确认的重复矩形、指标冲突的镜像矩形及生成重叠逻辑矩形的复杂布局仍拒绝映射。已确认的复制模式使用一个桌面坐标空间；相同物理范围、DPI 和工作区的重复镜像记录可合并。映射失败时气泡隐藏并给出诊断。
 
 DPI 读取沿用项目既有 GetDpiForMonitor 路径；[微软文档](https://learn.microsoft.com/en-us/windows/win32/api/shellscalingapi/nf-shellscalingapi-getdpiformonitor)列出进程 awareness 对返回值的影响，也提示 per-monitor 线程优先使用 GetDpiForWindow。当前清单是 PerMonitorV2；各屏 DPI 和自定义缩放仍须双屏实机核验。
 

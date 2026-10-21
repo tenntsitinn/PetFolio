@@ -145,19 +145,18 @@ sealed class TrayMenuStyle : IDisposable
         var item = menu.OwnerItem;
         var parent = item == null ? null : item.Owner as ToolStripDropDown;
         if (parent == null) return;
-        int gap = (int)Math.Round(4 * Scale(parent));
         var workArea = Screen.FromRectangle(parent.Bounds).WorkingArea;
         int top = parent.Top + item.Bounds.Top - parent.Padding.Top;
-        var location = SubmenuLocation(parent.Bounds, menu.Size, workArea, top, gap);
+        var location = SubmenuLocation(parent.Bounds, menu.Size, workArea, top);
         if (menu.Location != location)
             SetWindowPos(menu.Handle, IntPtr.Zero, location.X, location.Y, 0, 0, 0x15);
     }
 
-    internal static Point SubmenuLocation(Rectangle parent, Size child, Rectangle workArea, int top, int gap)
+    internal static Point SubmenuLocation(Rectangle parent, Size child, Rectangle workArea, int top)
     {
-        int x = parent.Right + gap;
+        int x = parent.Right;
         if (x + child.Width > workArea.Right)
-            x = parent.Left - gap - child.Width;
+            x = parent.Left - child.Width;
         int y = Math.Max(workArea.Top, Math.Min(top, workArea.Bottom - child.Height));
         return new Point(x, y);
     }
@@ -227,6 +226,23 @@ sealed class TrayMenuStyle : IDisposable
     {
         if (menu.Width <= 0 || menu.Height <= 0)
             return;
+        // A window Region has binary coverage and prevents DWM rounding.
+        // Let Windows 11 composite the outer edge; older systems retain the
+        // existing region fallback without changing menu input behavior.
+        if (menu.IsHandleCreated)
+        {
+            var previous = menu.Region;
+            menu.Region = null;
+            if (previous != null) previous.Dispose();
+            try
+            {
+                int preference = 2; // DWMWCP_ROUND
+                if (DwmSetWindowAttribute(menu.Handle, 33, ref preference, sizeof(int)) == 0)
+                    return;
+            }
+            catch (DllNotFoundException) { }
+            catch (EntryPointNotFoundException) { }
+        }
         using (var path = Rounded(new RectangleF(0, 0, menu.Width, menu.Height), 8 * Scale(menu)))
         {
             var old = menu.Region;
@@ -380,4 +396,6 @@ sealed class TrayMenuStyle : IDisposable
     static extern uint GetDpiForWindow(IntPtr window);
     [DllImport("user32.dll")]
     static extern bool SetWindowPos(IntPtr window, IntPtr after, int x, int y, int width, int height, uint flags);
+    [DllImport("dwmapi.dll")]
+    static extern int DwmSetWindowAttribute(IntPtr window, int attribute, ref int value, int size);
 }

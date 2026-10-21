@@ -239,13 +239,13 @@ static class FeatureLifecycleTests
                 quotaOption.PerformClick();
                 Check(quotas[0].Disposals == 1 && system.IsRunning, "Disabling quota releases only its data service");
                 systemOption.PerformClick();
-                Check(!view.Visible && !system.IsRunning && !view.AnyModeEnabled, "Disabling both modes hides and stops sampling");
+                Check(view.Visible && system.IsRunning && systemOption.Checked, "The last enabled feature cannot be disabled");
                 feature.Restore();
-                Check(!view.Visible && !system.IsRunning, "Restore cannot override disabled content");
+                Check(view.Visible && system.IsRunning, "Restore keeps the remaining content running");
                 var saved = store.Load();
-                Check(!saved.QuotaEnabled && !saved.SystemEnabled && saved.SystemMode, "Feature persists authoritative switches and mode");
+                Check(!saved.QuotaEnabled && saved.SystemEnabled && saved.SystemMode, "Rejected toggle preserves persisted switches and mode");
                 systemOption.PerformClick();
-                Check(view.Visible && system.IsRunning && counters.Count == 5, "Re-enabling System restores the requested bubble with fresh counters");
+                Check(view.Visible && system.IsRunning && counters.Count == 4, "Repeated rejected toggles do not restart counters");
                 feature.Stop();
                 Check(!system.IsRunning && view.IsDisposed && pets.Subscribers == 0, "Stop releases system service and view subscriptions");
                 int before = counters.Count;

@@ -49,7 +49,7 @@ PetFolio 讓桌面寵物成為工作時有用的小夥伴。**Quota remaining** 
 
 額度來源是 **CLI 登入帳號**。目前不會檢查它是否與 Codex 桌面端帳號一致，使用多帳號時請自行確認。
 
-目前 1.5.0 為測試版：多屏座標鏈路已加入，但混合 DPI 多屏尚待實機驗收；詳見 [多屏開發記錄](docs/MULTI_SCREEN.md)。外觀圖為早期示意，當前滑塊與選單以程式為準。
+目前 1.6.0 為測試版：多屏座標鏈路、顯示模式路由及邊界回彈已加入；複製模式與混合 DPI 多屏仍待更多實機驗收。詳見 [多屏開發記錄](docs/MULTI_SCREEN.md) 與 [顯示模式路由](docs/DISPLAY_MODES.md)。外觀圖為早期示意，當前滑塊與選單以程式為準。
 
 ## 快速開始
 
@@ -178,7 +178,7 @@ Windows 若停用了此登入啟動項，需在系統的啟動應用設定重新
 
 Default Bubble 同樣跟隨 Codex 主題，在啟動、每次實際額度查詢（自動約每五分鐘）及單擊／系統匣 Refresh 時同步；Codex 主題配置缺失、無效或讀取失敗時保留上次 Codex 配色，不自行改用 Windows 主題。額度查詢失敗不影響主題更新。
 
-隱藏狀態僅限目前執行階段；兩項功能開關、目前模式、背景不透明度與偏好方位會保留。只有兩項都啟用時才可雙擊或使用 `Switch to …` 切換；停用目前模式會切到另一個已啟用模式，啟用另一項則不會改變目前模式。全部停用時隱藏氣泡，`Show Bubble` 與 `Refresh` 置灰。
+隱藏狀態僅限目前執行階段；兩項功能開關、目前模式、背景不透明度與偏好方位會保留。只有兩項都啟用時才可雙擊或使用 `Switch to …` 切換；停用目前模式會切到另一個已啟用模式，啟用另一項則不會改變目前模式。至少保留一項功能啟用；只剩一項時，點擊取消勾選不生效。
 
 Default 使用客戶端原生文字色，跟隨 Codex 主題；Codex 選擇 system 時跟隨 Windows。以下透明度與背景取樣規則僅適用於 Pet colour：百分比數字使用 Alpha=1，標題、指標標籤、網速與更新時間使用相同 RGB、Alpha 0.8（204/255），以透明度呈現層次。背景色辨識在啟動後首次額度查詢、每次實際自動或手動額度查詢，以及套用新透明度時進行；System 模式在 0%～20%（含 20%） 背景不透明度下，也會隨每兩秒指標刷新重新取樣。氣泡隱藏時跳過取樣；移動、寵物配色更新與一般重繪使用上次結果。取樣避開文字區域，以氣泡空白邊緣估計背景，只在記憶體處理，不保存畫面。氣泡背景不透明度為 0%～20%（含 20%） 時，不論主色深淺，都根據背景對比直接選擇黑字或白字，不加文字描邊；取樣失敗保留上次結果，尚無結果時沿用主色配字。
 
@@ -489,7 +489,7 @@ The tray menu and all submenus follow Codex's dark / light theme. When Codex sel
 
 Default Bubble also follows Codex's theme. It syncs at startup, each accepted quota query (automatically about every five minutes), and a click or tray Refresh. Missing, invalid or unreadable Codex theme settings retain the last Codex palette without independently selecting a Windows theme; quota failures do not prevent theme updates.
 
-Hiding applies only to the current session. Both feature switches, the selected mode, background opacity and preferred placement are retained. Double-click and `Switch to …` are available only when both modes are enabled. Disabling the current mode selects the other enabled mode; enabling another mode preserves the current selection. With both disabled, the bubble is hidden and `Show Bubble` / `Refresh` are disabled.
+Hiding applies only to the current session. Both feature switches, the selected mode, background opacity and preferred placement are retained. Double-click and `Switch to …` are available only when both modes are enabled. Disabling the current mode selects the other enabled mode; enabling another mode preserves the current selection. At least one feature must remain enabled; clicking the last checked feature leaves it enabled.
 
 Default uses native client text colours and follows the Codex theme, or Windows when Codex selects system. The following opacity and background-sampling rules apply only to Pet colour: percentage values use alpha 1; titles, metric labels, network rates and update time use the same RGB with alpha 0.8 (204/255) for visual depth. Background sampling occurs with the first quota query after startup, each accepted automatic or manual quota query, and applying a new opacity setting. At 0–20% background opacity (inclusive), System mode also samples with each two-second metrics refresh. Hidden bubbles skip sampling; movement, pet color updates, and ordinary repaint reuse the cached result. Blank bubble margins estimate the background without sampling text. Captures remain in memory and are not saved. Both light and dark pet colors at 0–20% opacity (inclusive) use plain black or white text according to background contrast, without a text outline. Failed captures retain the previous result; without a result, the original pet-based text colour is used.
 

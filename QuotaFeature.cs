@@ -230,11 +230,14 @@ sealed class QuotaFeature : ICompanionFeature
         if (view == null)
             return;
         var previousContent = content;
+        var nextContent = content.Enable(
+            systemMode ? content.QuotaEnabled : !content.QuotaEnabled,
+            systemMode ? !content.SystemEnabled : content.SystemEnabled);
+        if (nextContent == content)
+            return;
         try
         {
-            SetContent(content.Enable(
-                systemMode ? content.QuotaEnabled : !content.QuotaEnabled,
-                systemMode ? !content.SystemEnabled : content.SystemEnabled));
+            SetContent(nextContent);
             UpdateQuotaService();
             SaveSettings();
         }

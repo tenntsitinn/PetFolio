@@ -338,6 +338,7 @@ class QuotaLabel : Form
             line2 = "Click to retry";
             status = "Quota unavailable";
             value1 = value2 = "";
+            quotaPercent1 = quotaPercent2 = null;
         }
 
         if (state.IsRefreshing)
@@ -693,8 +694,10 @@ class QuotaLabel : Form
         base.WndProc(ref m);
         if (m.Msg == 0x1A || m.Msg == 0x31A)
             RefreshCodexAppearance(); // Settings / theme changed.
-        if (m.Msg == 0x7E || m.Msg == 0x2E0)
+        if (m.Msg == 0x7E || m.Msg == 0x2E0 ||
+            (m.Msg == 0x1A && m.WParam.ToInt64() == 0x2F)) // SPI_SETWORKAREA
         {
+            snap.Cancel();
             var handler = DisplayMetricsChanged;
             if (handler != null)
                 handler();
@@ -900,6 +903,13 @@ class QuotaLabel : Form
                             DrawText(g, detail, secondary, line1, 20, 32, 168);
                             DrawText(g, detail, secondary, line2, 20, 48, 168);
                         }
+                        else if (quotaPercent1.HasValue != quotaPercent2.HasValue)
+                        {
+                            bool first = quotaPercent1.HasValue;
+                            DrawMetric(g, detail, amount, primary, secondary,
+                                first ? line1 : line2, first ? value1 : value2,
+                                first ? quotaPercent1 : quotaPercent2, 20, 168);
+                        }
                         else
                         {
                             DrawMetric(g, detail, amount, primary, secondary, line1, value1.Length == 0 ? "--" : value1, quotaPercent1, 20);
@@ -956,19 +966,32 @@ class QuotaLabel : Form
         }
     }
 
-    void DrawMetric(Graphics g, Font detail, Font amount, Brush primary, Brush secondary, string label, string value, double? percent, int x)
+    void DrawMetric(Graphics g, Font detail, Font amount, Brush primary, Brush secondary, string label, string value, double? percent, int x, int metricWidth = 74)
     {
-        DrawText(g, detail, secondary, label, x, 32, 74);
-        DrawText(g, amount, primary, value, x, 46, 74);
+        if (metricWidth > 74)
+        {
+            DrawText(g, detail, secondary, label, x, 44, metricWidth - 78);
+            using (var format = (StringFormat)StringFormat.GenericTypographic.Clone())
+            {
+                format.Alignment = StringAlignment.Far;
+                format.FormatFlags |= StringFormatFlags.NoWrap;
+                g.DrawString(value, amount, primary, new RectangleF(x, 40, metricWidth, 22), format);
+            }
+        }
+        else
+        {
+            DrawText(g, detail, secondary, label, x, 32, metricWidth);
+            DrawText(g, amount, primary, value, x, 46, metricWidth);
+        }
         var accent = DefaultAppearance ? BubbleAppearance.Text(codexDark) : PetTheme.ProgressAccent(panelColor, desktopBackground);
         using (var track = new SolidBrush(Color.FromArgb(38, accent)))
         using (var fill = new SolidBrush(Color.FromArgb(217, accent)))
-        using (var shape = Rounded(new RectangleF(x, 68.5f, 74, 3), 1.5f))
+        using (var shape = Rounded(new RectangleF(x, 68.5f, metricWidth, 3), 1.5f))
         {
             g.FillPath(track, shape);
             if (percent.HasValue && !Double.IsNaN(percent.Value))
             {
-                float width = (float)(74 * Math.Max(0, Math.Min(100, percent.Value)) / 100);
+                float width = (float)(metricWidth * Math.Max(0, Math.Min(100, percent.Value)) / 100);
                 if (width > 0)
                     using (var portion = Rounded(new RectangleF(x, 68.5f, width, 3), Math.Min(1.5f, width / 2)))
                         g.FillPath(fill, portion);
@@ -1029,11 +1052,12 @@ class QuotaLabel : Form
                 desired = placement.Resolve(petBounds, Size, monitor, edgePadding, petState.Dragging);
         }
 
-        if (!placement.Active && snap.Active)
+        if (!placement.Active)
         {
-            var offset = snap.Step(new Point(desired.X - anchor.X, desired.Y - anchor.Y), watch.ElapsedMilliseconds);
+            var offset = snap.Track(new Point(desired.X - anchor.X, desired.Y - anchor.Y), watch.ElapsedMilliseconds);
             desired = PetPanelPlacement.Constrain(new Point(anchor.X + offset.X, anchor.Y + offset.Y), Size, monitor, edgePadding);
         }
+        UpdateInteractionTimer();
 
         int x = desired.X, y = desired.Y;
         if (glass != null)

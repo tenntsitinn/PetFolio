@@ -535,12 +535,21 @@ sealed class PetStateService : IPetStateSource, IDisposable
 
         if (watch.ElapsedMilliseconds >= nextDisplayRead)
         {
-            nextDisplayRead = watch.ElapsedMilliseconds + 1000;
+            nextDisplayRead = watch.ElapsedMilliseconds + 1000; // Retry transient failures promptly.
             try
             {
-                desktop = readDesktop(target, dpi);
-                if (desktop == null)
+                var nextDesktop = readDesktop(target, dpi);
+                if (nextDesktop == null)
                     throw new InvalidOperationException("Monitor metrics unavailable");
+                if (desktop == null || desktop.Mode != nextDesktop.Mode)
+                {
+                    Program.Record("pet-display-mode", new { mode = nextDesktop.Mode.ToString(), desktops = nextDesktop.Displays.Count });
+                    drag.Reset();
+                }
+                desktop = nextDesktop;
+                // Display/DPI notifications invalidate immediately. This is only
+                // a fallback for missed events, independent of quota/network polling.
+                nextDisplayRead = watch.ElapsedMilliseconds + 30000;
                 if (drag.Display != null)
                 {
                     var current = desktop.Find(drag.Display.Id);
