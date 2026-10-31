@@ -9,6 +9,7 @@ using System.Windows.Forms;
 sealed class ShadowBackdrop : Form
 {
     const int ShadowPadding = 24, PanelWidth = BubbleLayout.Width, PanelHeight = BubbleLayout.Height;
+    float scale = 1f;
     Bitmap pixels;
     bool dark;
     public ShadowBackdrop(string home)
@@ -23,6 +24,13 @@ sealed class ShadowBackdrop : Form
         int alpha = dark ? 89 : 51;
         pixels = Build(alpha);
         Program.Record("panel-shadow", new { offsetX = 0, offsetY = 3, blur = 16, alpha = alpha, padding = ShadowPadding });
+    }
+
+    internal void SetScale(float next)
+    {
+        scale = next;
+        ClientSize = new Size((int)Math.Round((PanelWidth + 2 * ShadowPadding) * scale), (int)Math.Round((PanelHeight + 2 * ShadowPadding) * scale));
+        if (IsHandleCreated) Render();
     }
 
     internal void SetTheme(bool next)
@@ -138,7 +146,9 @@ sealed class ShadowBackdrop : Form
     {
         var screen = Native.GetDC(IntPtr.Zero);
         var dc = Native.CreateCompatibleDC(screen);
-        var bitmap = pixels.GetHbitmap(Color.FromArgb(0));
+        IntPtr bitmap;
+        using (var scaled = new Bitmap(pixels, Size))
+            bitmap = scaled.GetHbitmap(Color.FromArgb(0));
         var previous = Native.SelectObject(dc, bitmap);
         try
         {
@@ -179,7 +189,7 @@ sealed class ShadowBackdrop : Form
             return;
         }
 
-        var position = new Point(panel.X - ShadowPadding, panel.Y - ShadowPadding);
+        var position = new Point(panel.X - (int)Math.Round(ShadowPadding * scale), panel.Y - (int)Math.Round(ShadowPadding * scale));
         if (Location != position || !Visible)
             Native.SetWindowPos(Handle, IntPtr.Zero, position.X, position.Y, 0, 0, 0x0010 | 0x0001 | 0x0004);
         if (!Visible)

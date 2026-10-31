@@ -14,6 +14,7 @@ sealed class CloseBubbleButton : Form
     readonly ToolTip tooltip = new ToolTip();
     Color colour, ink;
     bool nativeAppearance, dark;
+    float scale = 1f;
     bool pressed;
     internal CloseBubbleButton(Action handler)
     {
@@ -71,6 +72,13 @@ sealed class CloseBubbleButton : Form
             Render();
     }
 
+    internal void SetScale(float value)
+    {
+        scale = value;
+        ClientSize = new Size((int)Math.Round(Diameter * scale), (int)Math.Round(Diameter * scale));
+        if (IsHandleCreated) Render();
+    }
+
     internal void Follow(Point bubble, bool visible)
     {
         if (!visible)
@@ -82,7 +90,7 @@ sealed class CloseBubbleButton : Form
             return;
         }
 
-        var position = new Point(bubble.X + OffsetX, bubble.Y + OffsetY);
+        var position = new Point(bubble.X + (int)Math.Round(OffsetX * scale), bubble.Y + (int)Math.Round(OffsetY * scale));
         if (Location != position || !Visible)
             Native.SetWindowPos(Handle, IntPtr.Zero, position.X, position.Y, 0, 0, 0x0010 | 0x0001 | 0x0004);
         if (!Visible)
@@ -92,7 +100,7 @@ sealed class CloseBubbleButton : Form
     protected override void OnMouseDown(MouseEventArgs e)
     {
         base.OnMouseDown(e);
-        if (e.Button == MouseButtons.Left && Inside(e.Location))
+        if (e.Button == MouseButtons.Left && Inside(new Point((int)(e.X / scale), (int)(e.Y / scale))))
         {
             pressed = true;
             Capture = true;
@@ -104,7 +112,7 @@ sealed class CloseBubbleButton : Form
         base.OnMouseUp(e);
         if (e.Button != MouseButtons.Left)
             return;
-        bool click = pressed && Inside(e.Location);
+        bool click = pressed && Inside(new Point((int)(e.X / scale), (int)(e.Y / scale)));
         pressed = false;
         Capture = false;
         if (click)
@@ -128,7 +136,7 @@ sealed class CloseBubbleButton : Form
     {
         if (bubble.Contains(pointer))
         {
-            double radius = Math.Min(BubbleLayout.Radius, Math.Min(bubble.Width, bubble.Height) / 2.0);
+            double radius = Math.Min(BubbleLayout.Radius * bubble.Width / (double)BubbleLayout.Width, Math.Min(bubble.Width, bubble.Height) / 2.0);
             double dx = Math.Max(0, Math.Abs(pointer.X - bubble.Left - bubble.Width / 2.0) - (bubble.Width / 2.0 - radius));
             double dy = Math.Max(0, Math.Abs(pointer.Y - bubble.Top - bubble.Height / 2.0) - (bubble.Height / 2.0 - radius));
             if (dx * dx + dy * dy <= radius * radius)
@@ -136,7 +144,8 @@ sealed class CloseBubbleButton : Form
         }
 
         // The protruding button is part of the hover region once revealed.
-        return buttonVisible && Inside(new Point(pointer.X - bubble.X - OffsetX, pointer.Y - bubble.Y - OffsetY));
+        double factor = bubble.Width / (double)BubbleLayout.Width;
+        return buttonVisible && Inside(new Point((int)((pointer.X - bubble.X) / factor) - OffsetX, (int)((pointer.Y - bubble.Y) / factor) - OffsetY));
     }
 
     protected override void OnPaintBackground(PaintEventArgs e)
@@ -191,7 +200,9 @@ sealed class CloseBubbleButton : Form
         {
             var screen = Native.GetDC(IntPtr.Zero);
             var dc = Native.CreateCompatibleDC(screen);
-            var h = bitmap.GetHbitmap(Color.FromArgb(0));
+            IntPtr h;
+            using (var scaled = new Bitmap(bitmap, Size))
+                h = scaled.GetHbitmap(Color.FromArgb(0));
             var previous = Native.SelectObject(dc, h);
             try
             {

@@ -16,6 +16,8 @@ static class PetPanelTests
         var pet = new Rectangle(500, 400, 112, 150);
         var panel = new Size(208, 104);
         var area = new Rectangle(0, 0, 1920, 1040);
+        var scaled = new PetPanelPlacement();
+        Check(scaled.Resolve(new Rectangle(500, 400, 224, 300), new Size(416, 208), new Rectangle(0, 0, 3840, 2160), 48, false, 2f) == new Point(748, 446), "200 percent DPI scales gap and preserves centering");
         var p = new PetPanelPlacement("invalid");
         Check(p.Preferred == "right", "invalid preference defaults to right");
         Check(new PetPanelPlacement(null).Preferred == "right", "missing preference defaults to right");

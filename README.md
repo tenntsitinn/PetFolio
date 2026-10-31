@@ -35,7 +35,7 @@ PetFolio 讓桌面寵物成為工作時有用的小夥伴。**Quota remaining** 
 
 ## 目前功能：Quota remaining 與 System Usage
 
-兩種模式共用 **208 × 104 px** 氣泡，標題為 **Quota remaining / System usage**。雙列指標使用 16px 粗體，標題 13px、輔助資訊 11px（Segoe UI）。進度條分別表示剩餘額度或 CPU／RAM 使用率；Default 使用中性灰進度條，Pet colour 使用寵物主題色並修正對比度；填充與軌道約 85%／15% alpha。System 底部並列顯示完整網速，例如 `↓ 1.2 MB/s  ↑ 256 KB/s`，不顯示更新時間；Quota 底部保留 `updated`。
+兩種模式共用 **208 × 104 DIP** 氣泡，標題為 **Quota remaining / System usage**。雙列指標使用 16px 粗體，標題 13px、輔助資訊 11px（Segoe UI）。進度條分別表示剩餘額度或 CPU／RAM 使用率；Default 使用中性灰進度條，Pet colour 使用寵物主題色並修正對比度；填充與軌道約 85%／15% alpha。System 底部並列顯示完整網速，例如 `↓ 1.2 MB/s  ↑ 256 KB/s`，不顯示更新時間；Quota 底部保留 `updated`。
 
 - **System Usage**：雙擊同一個氣泡，在額度與系統監控之間切換；也可使用系統匣的 **Switch to System usage / Switch to Quota remaining**。模式會保存，下次啟動自動恢復。系統模式每兩秒顯示整機 CPU 使用率、實體記憶體使用率，以及網路下載（↓）與上傳（↑）速率；單擊可刷新當前模式，拖動與關閉操作保持一致。
 - 系統模式沿用原有視窗、大小、配色與定位，不新增氣泡。隱藏或回到額度模式時停止系統採樣；額度仍依原有週期在背景更新。CPU 與網速首次採樣顯示 `--`，下一次採樣才有速率。網速合計啟用中的非 loopback、非 tunnel 介面；VPN 或虛擬網卡可能造成重複計算，數值不是 Codex 專屬流量。單擊會等待系統雙擊判定時間，避免切換模式時觸發額度查詢。
@@ -261,7 +261,7 @@ python .\build-pet-palettes.py --asar 'C:\path\to\resources\app.asar' --home 'C:
 
 ### 設計與診斷
 
-目前額度面板為 208 × 104 px，採 25 px 圓角，位於寵物左右兩側並保留 12 px 間距；上下區域留給原生 Status Bubble 與 Action Bar。寵物拖動時使用 16 ms 跟隨計時器，靜止時為 100 ms；氣泡拖動／吸附使用獨立 16 ms 互動計時器，靜止可見時以 100 ms 更新懸停，隱藏時停止。這些間隔不是固定幀率保證。
+目前額度面板為 208 × 104 DIP，採 25 px 圓角，位於寵物左右兩側並保留 12 px 間距；上下區域留給原生 Status Bubble 與 Action Bar。寵物拖動時使用 16 ms 跟隨計時器，靜止時為 100 ms；氣泡拖動／吸附使用獨立 16 ms 互動計時器，靜止可見時以 100 ms 更新懸停，隱藏時停止。這些間隔不是固定幀率保證。
 
 系統匣 **Diagnostics** 顯示寵物未出現的原因、版本與螢幕資訊；`PetFolio.exe --status` 及插件狀態腳本在程式就緒時也會回傳 `diagnostics`。識別狀態改變或手動開啟診斷時更新 `pet-diagnostic.json`；停止後狀態命令不回傳過去執行個體的診斷。無法識別 Codex 套件版本時顯示 unavailable。
 
@@ -348,7 +348,7 @@ UI illustrations use built-in Codex pets and sample values.
 
 ### Current features: Quota remaining and System Usage
 
-Both modes share a **208 × 104 px** bubble titled **Quota remaining / System usage**. Typography uses Segoe UI: 13px titles, 16px bold metrics and 11px supporting text. Progress bars show quota remaining or CPU/RAM usage; Default uses neutral progress bars; Pet colour uses contrast-corrected pet colours. Both use approximately 85% fill / 15% track alpha. System displays download/upload rates with full units in the footer, for example `↓ 1.2 MB/s  ↑ 256 KB/s`, without a timestamp. Quota retains its `updated` footer.
+Both modes share a **208 × 104 DIP** bubble titled **Quota remaining / System usage**. Typography uses Segoe UI: 13px titles, 16px bold metrics and 11px supporting text. Progress bars show quota remaining or CPU/RAM usage; Default uses neutral progress bars; Pet colour uses contrast-corrected pet colours. Both use approximately 85% fill / 15% track alpha. System displays download/upload rates with full units in the footer, for example `↓ 1.2 MB/s  ↑ 256 KB/s`, without a timestamp. Quota retains its `updated` footer.
 
 - **System Usage**: Double-click the existing bubble to switch between quota and system metrics, or use **Switch to System usage / Switch to Quota remaining** in the tray menu. The mode is saved. System mode updates whole-system CPU usage, physical memory usage, and download (↓) / upload (↑) rates every two seconds. Single-click refreshes the current mode; dragging and closing work as before.
 - Both modes share the same window, size, colour and placement. System sampling stops when hidden or switched to quota; quota polling continues on its original schedule. CPU and network rates initially show `--` until a second sample arrives. Traffic totals include active non-loopback, non-tunnel interfaces; VPN and virtual adapters may count traffic twice. These are system totals, not Codex-only traffic. Single-click waits for the OS double-click interval to avoid querying quota when switching modes.
@@ -573,7 +573,7 @@ This tool briefly displays a test backdrop and writes screenshots to its output 
 
 #### Design and diagnostics
 
-The quota panel is currently 208 × 104 px with 25 px rounded corners and a 12 px gap beside the pet. Upper and lower areas are reserved for the native Status Bubble and Action Bar. Pet following uses a 16 ms timer during dragging and 100 ms while idle. A separate interaction timer handles panel dragging/snapping at 16 ms and visible hover checks at 100 ms, stopping when hidden. These intervals are not frame-rate guarantees.
+The quota panel is currently 208 × 104 DIP with 25 px rounded corners and a 12 px gap beside the pet. Upper and lower areas are reserved for the native Status Bubble and Action Bar. Pet following uses a 16 ms timer during dragging and 100 ms while idle. A separate interaction timer handles panel dragging/snapping at 16 ms and visible hover checks at 100 ms, stopping when hidden. These intervals are not frame-rate guarantees.
 
 Tray **Diagnostics** explains missing pets and shows versions and display information. `PetFolio.exe --status` and plugin status scripts also return `diagnostics` while the companion is ready. The report updates on discovery-status changes or when opened manually; stopped status does not expose an earlier session's report. Unknown Codex package versions are shown as unavailable.
 
@@ -622,3 +622,5 @@ There is currently no `LICENSE` file; licensing terms are still to be decided.
 - [Windows Forms and Visual Layer](https://learn.microsoft.com/en-us/windows/uwp/composition/using-the-visual-layer-with-windows-forms): Windows Composition integration.
 - [Direct2D Gaussian blur](https://learn.microsoft.com/en-us/windows/win32/direct2d/gaussian-blur): Backdrop blur reference.
 - [Adaptive Tab Bar Colour](https://github.com/atbc-org/Adaptive-Tab-Bar-Colour/blob/main/src/utils/colour.ts): `PetTheme.cs` acknowledges inspiration from its separation of source color and contrast adjustment; color sampling is independently implemented.
+
+DPI scaling: bubble geometry and text scale with the pet window DPI. Desktop state JSON supports up to 32 Mi characters.

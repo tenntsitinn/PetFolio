@@ -34,3 +34,6 @@ design/*
 
 # Product illustrations used by the bilingual README
 !docs/images/**/*.png
+
+.dpi-build/
+.test-results-dpi.txt

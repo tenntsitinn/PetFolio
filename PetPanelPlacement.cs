@@ -66,14 +66,14 @@ sealed class PetPanelPlacement
         HasMoved = false;
     }
 
-    internal Point Resolve(Rectangle pet, Size panel, Rectangle workArea, int padding, bool petDragging = false)
+    internal Point Resolve(Rectangle pet, Size panel, Rectangle workArea, int padding, bool petDragging = false, float scale = 1f)
     {
         // Codex 26.1013.3656: Kp / fle / gle, transposed from top/bottom to left/right.
         // Drag entry points reset the previous direction before scoring; idle layout retains it.
         string preferred = pet.Left + pet.Width / 2.0 < workArea.Left + workArea.Width / 2.0 ? "right" : "left";
         string previous = petDragging ? preferred : Effective ?? Preferred;
-        var left = Dock("left", pet, panel);
-        var right = Dock("right", pet, panel);
+        var left = Dock("left", pet, panel, scale);
+        var right = Dock("right", pet, panel, scale);
         double leftScore = Overflow(left, panel, workArea) + (preferred == "left" ? 0 : 32) - (previous == "left" ? 96 : 0);
         double rightScore = Overflow(right, panel, workArea) + (preferred == "right" ? 0 : 32) - (previous == "right" ? 96 : 0);
         Effective = leftScore <= rightScore ? "left" : "right";
@@ -81,10 +81,10 @@ sealed class PetPanelPlacement
         return Constrain(Effective == "left" ? left : right, panel, workArea, padding);
     }
 
-    static Point Dock(string side, Rectangle pet, Size panel)
+    static Point Dock(string side, Rectangle pet, Size panel, float scale)
     {
         // Center on the pet canvas, independent of the sprite's animated outline.
-        return new Point(side == "left" ? pet.Left - panel.Width - 12 : pet.Right + 12,
+        return new Point(side == "left" ? pet.Left - panel.Width - (int)Math.Round(12.0 * scale) : pet.Right + (int)Math.Round(12.0 * scale),
             pet.Top + (pet.Height - panel.Height) / 2);
     }
 

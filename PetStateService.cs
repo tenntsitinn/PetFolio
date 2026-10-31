@@ -439,7 +439,7 @@ sealed class PetStateService : IPetStateSource, IDisposable
             StateReads++;
             using (var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete))
             using (var reader = new StreamReader(stream))
-                root = new JavaScriptSerializer().Deserialize<Dictionary<string, object>>(reader.ReadToEnd());
+                root = new JavaScriptSerializer { MaxJsonLength = 32 * 1024 * 1024 }.Deserialize<Dictionary<string, object>>(reader.ReadToEnd());
             if (root == null)
                 throw new ArgumentException("Invalid pet state");
             var b = Find(root, "electron-avatar-overlay-bounds") as Dictionary<string, object>;

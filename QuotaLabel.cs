@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Drawing2D;
@@ -55,6 +55,7 @@ class QuotaLabel : Form
         }
     }
 
+    float displayScale = 1f;
     bool closing;
     bool trayMenuOpen;
     Color panelColor = Color.FromArgb(230, 27, 31, 38);
@@ -788,7 +789,7 @@ class QuotaLabel : Form
         // release recovery, capture loss and any gesture that crossed 4px are not.
         if (!cancel && !moved && releasedAt.HasValue && bubbleRequested && Visible)
         {
-            using (var body = Rounded(new Rectangle(0, 0, Width, Height), BubbleLayout.Radius))
+            using (var body = Rounded(new Rectangle(0, 0, Width, Height), BubbleLayout.Radius * displayScale))
                 if (body.IsVisible(PointToClient(pointer)))
                 {
                     clickTimer.Stop();
@@ -858,25 +859,26 @@ class QuotaLabel : Form
             using (var g = Graphics.FromImage(bitmap))
             {
                 g.Clear(Color.Transparent);
+                g.ScaleTransform(displayScale, displayScale);
                 g.SmoothingMode = SmoothingMode.AntiAlias;
                 g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAliasGridFit;
                 // Tint and blur share the compositor clip; only use the GDI shape for fallback.
                 if (glass == null || !glass.Ready)
-                    using (var shape = Rounded(new Rectangle(0, 0, Width, Height), BubbleLayout.Radius))
+                    using (var shape = Rounded(new Rectangle(0, 0, BubbleLayout.Width, BubbleLayout.Height), BubbleLayout.Radius))
                     using (var fill = new SolidBrush(panelColor))
                         g.FillPath(fill, shape);
                 else
                     // A layered HWND with alpha=0 passes input through. Minimum alpha
                     // makes the entire rounded body draggable, including gaps between
                     // text, while the visible tint stays in the Composition layer.
-                    using (var shape = Rounded(new Rectangle(0, 0, Width, Height), BubbleLayout.Radius))
+                    using (var shape = Rounded(new Rectangle(0, 0, BubbleLayout.Width, BubbleLayout.Height), BubbleLayout.Radius))
                     using (var hit = new SolidBrush(Color.FromArgb(1, panelColor.R, panelColor.G, panelColor.B)))
                         g.FillPath(hit, shape);
                 Color muted = DefaultAppearance ? BubbleAppearance.Secondary(codexDark) : PetTheme.Secondary(panelColor, desktopBackground);
                 // Inset the one-pixel stroke so antialiasing stays inside the HWND.
-                using (var outline = Rounded(new RectangleF(.5f, .5f, Width - 1, Height - 1), BubbleLayout.Radius - .5f))
+                using (var outline = Rounded(new RectangleF(.5f, .5f, BubbleLayout.Width - 1, BubbleLayout.Height - 1), BubbleLayout.Radius - .5f))
                     if (DefaultAppearance)
-                        BubbleAppearance.DrawEdge(g, outline, new RectangleF(0, 0, Width, Height), codexDark);
+                        BubbleAppearance.DrawEdge(g, outline, new RectangleF(0, 0, BubbleLayout.Width, BubbleLayout.Height), codexDark);
                     else
                         using (var pen = new Pen(PetTheme.Outline(panelColor), 1f))
                             g.DrawPath(pen, outline);
@@ -1029,13 +1031,22 @@ class QuotaLabel : Form
             return;
         }
 
+        float nextScale = target == IntPtr.Zero ? 1f : Math.Max(96u, Native.GetDpiForWindow(target)) / 96f;
+        if (displayScale != nextScale)
+        {
+            displayScale = nextScale;
+            ClientSize = new Size((int)Math.Round(BubbleLayout.Width * displayScale), (int)Math.Round(BubbleLayout.Height * displayScale));
+            if (glass != null) glass.SetScale(displayScale);
+            if (dismissButton != null) dismissButton.SetScale(displayScale);
+            RenderFrame();
+        }
         if (!Visible)
             Show();
         var petBounds = PetBounds;
         var monitor = Screen.FromPoint(new Point(petBounds.Left + petBounds.Width / 2,
             petBounds.Top + petBounds.Height / 2)).WorkingArea;
-        int edgePadding = glass != null ? 24 : 0;
-        var desired = placement.Resolve(petBounds, Size, monitor, edgePadding, petState.Dragging);
+        int edgePadding = glass != null ? (int)Math.Round(24 * displayScale) : 0;
+        var desired = placement.Resolve(petBounds, Size, monitor, edgePadding, petState.Dragging, displayScale);
         if (placement.Active)
         {
             Native.POINT pointer;
@@ -1049,7 +1060,7 @@ class QuotaLabel : Form
             if (placement.Active)
                 desired = placement.DragPosition;
             else
-                desired = placement.Resolve(petBounds, Size, monitor, edgePadding, petState.Dragging);
+                desired = placement.Resolve(petBounds, Size, monitor, edgePadding, petState.Dragging, displayScale);
         }
 
         if (!placement.Active)

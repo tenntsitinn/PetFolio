@@ -207,6 +207,14 @@ sealed class GlassBackdrop : Form
         }
     }
 
+    internal void SetScale(float scale)
+    {
+        ClientSize = new Size((int)Math.Round(BubbleLayout.Width * scale), (int)Math.Round(BubbleLayout.Height * scale));
+        if (compositionTarget != null && compositionTarget.Root != null)
+            compositionTarget.Root.Scale = new Vector3(scale, scale, 1);
+        if (shadow != null) shadow.SetScale(scale);
+    }
+
     public void Follow(Point position, bool visible)
     {
         if (!visible || !Ready)
